@@ -195,16 +195,26 @@ func originAddSteamShortcut(id string, ii *InstallInfo, originData *data.OriginD
 			return err
 		}
 
-		if originData.CatalogItem != nil {
-			pda, err = egsShortcutAssets(gamesDbProduct, originData.CatalogItem, rdx)
+		switch gamesDbProduct {
+		case nil:
+			if originData.CatalogItem != nil {
+				pda, err = egsCatalogItemAssets(originData.CatalogItem)
+				if err != nil {
+					return err
+				}
+
+				lp = defaultLogoPosition()
+			}
+		default:
+			pda, err = egsOtherOriginsShortcutAssets(gamesDbProduct, rdx)
 			if err != nil {
 				return err
 			}
-		}
 
-		lp, err = egsLogoPosition(gamesDbProduct, rdx)
-		if err != nil {
-			return err
+			lp, err = egsOtherOriginsLogoPosition(gamesDbProduct, rdx)
+			if err != nil {
+				return err
+			}
 		}
 
 	default:

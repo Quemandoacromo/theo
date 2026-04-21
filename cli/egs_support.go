@@ -685,7 +685,7 @@ func egsUninstall(appName string, ii *InstallInfo, originData *data.OriginData, 
 	return nil
 }
 
-func egsShortcutAssets(gamesDbProduct *gog_integration.GamesDbProduct, catalogItem *egs_integration.CatalogItem, rdx redux.Writeable) (map[steam_grid.Asset]*url.URL, error) {
+func egsOtherOriginsShortcutAssets(gamesDbProduct *gog_integration.GamesDbProduct, rdx redux.Writeable) (map[steam_grid.Asset]*url.URL, error) {
 
 	if steamAppId := gamesDbProduct.GetSteamAppId(); steamAppId > 0 {
 
@@ -718,10 +718,10 @@ func egsShortcutAssets(gamesDbProduct *gog_integration.GamesDbProduct, catalogIt
 		return gogShortcutAssets(productDetails, rdx)
 	}
 
-	return egsCatalogItemAssets(catalogItem)
+	return nil, nil
 }
 
-func egsLogoPosition(gamesDbProduct *gog_integration.GamesDbProduct, rdx redux.Writeable) (*logoPosition, error) {
+func egsOtherOriginsLogoPosition(gamesDbProduct *gog_integration.GamesDbProduct, rdx redux.Writeable) (*logoPosition, error) {
 
 	if steamAppId := gamesDbProduct.GetSteamAppId(); steamAppId > 0 {
 
@@ -735,7 +735,7 @@ func egsLogoPosition(gamesDbProduct *gog_integration.GamesDbProduct, rdx redux.W
 		return steamLogoPosition(sais, appInfo)
 	}
 
-	return defaultLogoPosition(), nil
+	return nil, nil
 }
 
 func egsCatalogItemAssets(catalogItem *egs_integration.CatalogItem) (map[steam_grid.Asset]*url.URL, error) {

@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json/v2"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -14,6 +16,11 @@ import (
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
 )
+
+type GamesDbError struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+}
 
 func gogGetGamesDbEpic(appName string, force bool) (*gog_integration.GamesDbProduct, error) {
 
@@ -29,6 +36,10 @@ func gogGetGamesDbEpic(appName string, force bool) (*gog_integration.GamesDbProd
 	if !kvGamesDb.Has(appName) || force {
 		if err = gogFetchGamesDbEpic(appName, kvGamesDb); err != nil {
 			return nil, err
+		}
+
+		if !kvGamesDb.Has(appName) {
+			return nil, nil
 		}
 	}
 
@@ -58,7 +69,22 @@ func gogFetchGamesDbEpic(appName string, kvGamesDb kevlar.KeyValues) error {
 	}
 	defer resp.Body.Close()
 
-	return kvGamesDb.Set(appName, resp.Body)
+	buf := bytes.NewBuffer(nil)
+	if _, err = io.Copy(buf, resp.Body); err != nil {
+		return err
+	}
+
+	var gamesDbError GamesDbError
+	if err = json.UnmarshalRead(buf, &gamesDbError); err != nil {
+		return err
+	}
+
+	if gamesDbError.Error != "" && gamesDbError.ErrorDescription != "" {
+		nod.Log(gamesDbError.ErrorDescription)
+		return nil
+	}
+
+	return kvGamesDb.Set(appName, buf)
 }
 
 func gogShortcutAssets(productDetails *vangogh_integration.ProductDetails, rdx redux.Readable) (map[steam_grid.Asset]*url.URL, error) {
