@@ -43,7 +43,6 @@ type gridLogoPosition struct {
 
 type steamGridOptions struct {
 	name         string
-	sourceId     string
 	assets       map[steam_grid.Asset]*url.URL
 	logoPosition *logoPosition
 }
@@ -84,8 +83,9 @@ func SteamShortcutHandler(u *url.URL) error {
 		ii.Origin = data.ParseOrigin(q.Get("origin"))
 	}
 
-	if q.Has("source-id") {
-		sgo.sourceId = q.Get("source-id")
+	var forId string
+	if q.Has("for-id") {
+		forId = q.Get("for-id")
 	}
 
 	var err error
@@ -149,11 +149,11 @@ func SteamShortcutHandler(u *url.URL) error {
 
 	remove := q.Has("remove")
 
-	return SteamShortcut(id, ii, sgo, remove)
+	return SteamShortcut(id, forId, ii, sgo, remove)
 
 }
 
-func SteamShortcut(id string, ii *InstallInfo, sgo *steamGridOptions, remove bool) error {
+func SteamShortcut(id, forId string, ii *InstallInfo, sgo *steamGridOptions, remove bool) error {
 
 	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
@@ -168,22 +168,13 @@ func SteamShortcut(id string, ii *InstallInfo, sgo *steamGridOptions, remove boo
 	case data.UnknownOrigin:
 		return addSteamShortcut(id, ii, rdx, sgo)
 	default:
-
-		var assetsId string
-		switch sgo.sourceId {
-		case "":
-			assetsId = id
-		default:
-			assetsId = sgo.sourceId
-		}
-
 		var originData *data.OriginData
-		originData, err = originGetData(assetsId, ii, rdx, false)
+		originData, err = originGetData(id, ii, rdx, false)
 		if err != nil {
 			return err
 		}
 
-		return originAddSteamShortcut(id, ii, originData, rdx)
+		return originAddSteamShortcut(id, forId, ii, originData, rdx)
 	}
 }
 

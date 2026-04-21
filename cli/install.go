@@ -124,7 +124,7 @@ func Install(id string, ii *InstallInfo) error {
 		return err
 	}
 
-	if err = originAddSteamShortcut(id, ii, originData, rdx); err != nil {
+	if err = originAddSteamShortcut(id, id, ii, originData, rdx); err != nil {
 		return err
 	}
 
@@ -156,7 +156,7 @@ func Install(id string, ii *InstallInfo) error {
 	return nil
 }
 
-func originAddSteamShortcut(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
+func originAddSteamShortcut(id, forId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
 
 	if ii.NoSteamShortcut {
 		return nil
@@ -226,7 +226,11 @@ func originAddSteamShortcut(id string, ii *InstallInfo, originData *data.OriginD
 		logoPosition: lp,
 	}
 
-	return addSteamShortcut(id, ii, rdx, sgo)
+	if forId == "" {
+		forId = id
+	}
+
+	return addSteamShortcut(forId, ii, rdx, sgo)
 }
 
 func originInstall(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {

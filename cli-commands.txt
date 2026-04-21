@@ -136,7 +136,7 @@ steam-shortcut
     os={operating-systems^}
     lang-code={language-codes^}
     origin={origins}
-    source-id
+    for-id
     header
     capsule
     hero
