@@ -79,8 +79,6 @@ func ListHandler(u *url.URL) error {
 		ii.Origin = data.SteamOrigin
 	} else if q.Has("epic-games") {
 		ii.Origin = data.EpicGamesOrigin
-	} else {
-		ii.Origin = data.VangoghOrigin
 	}
 
 	update := q.Has("update")
@@ -132,6 +130,8 @@ func listAvailableProducts(ii *InstallInfo, update bool) error {
 	fetchAvailable := update || ii.force
 
 	switch ii.Origin {
+	case data.UnknownOrigin:
+		fallthrough
 	case data.VangoghOrigin:
 		if availableProducts, err = vangoghGetAvailableProducts(fetchAvailable); err != nil {
 			return err
