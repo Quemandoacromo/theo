@@ -159,22 +159,24 @@ func installedIdFromNameFragment(name string, rdx redux.Readable) (string, error
 
 	name = strings.ToLower(name)
 	var ids []string
+	var titles []string
 
 	for id := range rdx.Keys(data.InstallInfoProperty) {
 		if title, ok := rdx.GetLastVal(vangogh_integration.TitleProperty, id); ok {
 			if strings.Contains(strings.ToLower(title), name) {
 				ids = append(ids, id)
+				titles = append(titles, title)
 			}
 		}
 	}
 
 	switch len(ids) {
 	case 0:
-		return "", errors.New("no product title matches " + name)
+		return "", errors.New("no installed product title matches " + name)
 	case 1:
 		return ids[0], nil
 	default:
-		return "", errors.New(strconv.Itoa(len(ids)) + "product titles match " + name)
+		return "", errors.New(strconv.Itoa(len(ids)) + " installed product titles match " + name + ": " + strings.Join(titles, "; "))
 	}
 }
 
