@@ -23,6 +23,7 @@ func RunHandler(u *url.URL) error {
 	q := u.Query()
 
 	id := q.Get(vangogh_integration.IdProperty)
+	name := q.Get("name")
 
 	operatingSystem := vangogh_integration.AnyOperatingSystem
 	if q.Has(vangogh_integration.OperatingSystemsProperty) {
@@ -78,19 +79,35 @@ func RunHandler(u *url.URL) error {
 		et.protonOptions = strings.Split(q.Get("proton-options"), ",")
 	}
 
-	return Run(id, ii, et)
+	return Run(id, name, ii, et)
 }
 
-func Run(id string, request *InstallInfo, et *execTask) error {
+func Run(id, name string, request *InstallInfo, et *execTask) error {
 
 	playSessionStart := time.Now()
 
-	ra := nod.NewProgress("running product %s...", id)
+	title := id
+	if name != "" {
+		title = name
+	}
+
+	ra := nod.NewProgress("running product %s...", title)
 	defer ra.Done()
 
 	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
+	}
+
+	if name != "" && id != "" {
+		return errors.New("need id or name, not both")
+	}
+
+	if name != "" {
+		id, err = installedIdFromNameFragment(name, rdx)
+		if err != nil {
+			return err
+		}
 	}
 
 	ii, err := matchInstalledInfo(id, request, rdx)
@@ -132,6 +149,34 @@ func Run(id string, request *InstallInfo, et *execTask) error {
 	}
 
 	return updateTotalPlaytime(rdx, id)
+}
+
+func installedIdFromNameFragment(name string, rdx redux.Readable) (string, error) {
+
+	if err := rdx.MustHave(data.InstallInfoProperty, vangogh_integration.TitleProperty); err != nil {
+		return "", err
+	}
+
+	name = strings.ToLower(name)
+	var ids []string
+
+	for id := range rdx.Keys(data.InstallInfoProperty) {
+		if title, ok := rdx.GetLastVal(vangogh_integration.TitleProperty, id); ok {
+			if strings.Contains(strings.ToLower(title), name) {
+				ids = append(ids, id)
+				break
+			}
+		}
+	}
+
+	switch len(ids) {
+	case 0:
+		return "", errors.New("no product title matches " + name)
+	case 1:
+		return ids[0], nil
+	default:
+		return "", errors.New(strconv.Itoa(len(ids)) + "product titles match " + name)
+	}
 }
 
 func checkProductType(id string, rdx redux.Writeable, force bool) error {
