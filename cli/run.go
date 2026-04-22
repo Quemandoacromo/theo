@@ -164,7 +164,6 @@ func installedIdFromNameFragment(name string, rdx redux.Readable) (string, error
 		if title, ok := rdx.GetLastVal(vangogh_integration.TitleProperty, id); ok {
 			if strings.Contains(strings.ToLower(title), name) {
 				ids = append(ids, id)
-				break
 			}
 		}
 	}
