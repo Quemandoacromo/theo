@@ -4,6 +4,7 @@ import (
 	"errors"
 	"maps"
 	"slices"
+	"strings"
 )
 
 type Origin int
@@ -32,8 +33,9 @@ func (o Origin) String() string {
 }
 
 func ParseOrigin(originStr string) Origin {
+	originStr = strings.ToLower(originStr)
 	for org, str := range originStrings {
-		if str == originStr {
+		if strings.ToLower(str) == originStr {
 			return org
 		}
 	}
