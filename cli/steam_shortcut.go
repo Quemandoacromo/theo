@@ -25,7 +25,8 @@ const (
 )
 
 const (
-	runTemplate      = "run {id}"
+	runTemplate      = "run"
+	idTemplate       = "-id {id}"
 	osTemplate       = "-os {operating-system}"
 	langCodeTemplate = "-lang-code {lang-code}"
 )
@@ -280,7 +281,8 @@ func createSteamShortcut(loginUser string, id string, ii *InstallInfo, rdx redux
 
 	launchOptions := make([]string, 0, 3)
 
-	launchOptions = append(launchOptions, strings.Replace(runTemplate, "{id}", id, 1))
+	launchOptions = append(launchOptions, runTemplate)
+	launchOptions = append(launchOptions, strings.Replace(idTemplate, "{id}", id, 1))
 	launchOptions = append(launchOptions, strings.Replace(osTemplate, "{operating-system}", ii.OperatingSystem.String(), 1))
 	if ii.LangCode != langCodeDefault {
 		launchOptions = append(launchOptions, strings.Replace(langCodeTemplate, "{lang-code}", ii.LangCode, 1))
