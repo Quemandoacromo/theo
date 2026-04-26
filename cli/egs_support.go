@@ -648,12 +648,12 @@ func egsReduceCatalogItem(appName, catalogItemId string, kvCatalogItems kevlar.K
 
 	defer rcCatalogItem.Close()
 
-	var catalogItem egs_integration.CatalogItem
+	var catalogItem map[string]egs_integration.CatalogItem
 	if err = json.UnmarshalRead(rcCatalogItem, &catalogItem); err != nil {
 		return err
 	}
 
-	return rdx.ReplaceValues(vangogh_integration.TitleProperty, appName, catalogItem.Title)
+	return rdx.ReplaceValues(vangogh_integration.TitleProperty, appName, catalogItem[catalogItemId].Title)
 }
 
 func egsRemoveChunks(appName string, operatingSystem vangogh_integration.OperatingSystem, originData *data.OriginData) error {
