@@ -17,11 +17,6 @@ import (
 	"github.com/boggydigital/redux"
 )
 
-const (
-	egsCookiesFilename = "egs-cookies.json"
-	egsTokenKey        = "egs-token"
-)
-
 func ConnectHandler(u *url.URL) error {
 
 	q := u.Query()

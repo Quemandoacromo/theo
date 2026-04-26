@@ -26,6 +26,11 @@ import (
 	"github.com/boggydigital/redux"
 )
 
+const (
+	egsCookiesFilename = "egs-cookies.json"
+	egsTokenKey        = "egs-token"
+)
+
 var egsClient *http.Client
 var egsTokenVerifiedRecently bool
 
@@ -77,13 +82,21 @@ func egsGetAccessToken(cookieStr string) error {
 		return err
 	}
 
-	var arr *egs_integration.GetApiRedirectResponse
-	arr, err = egs_integration.GetApiRedirect(client)
+	var apiRedirectResponse egs_integration.GetApiRedirectResponse
+	var rcApiRedirectResponse io.ReadCloser
+
+	rcApiRedirectResponse, err = egs_integration.GetApiRedirect(client)
 	if err != nil {
 		return err
 	}
 
-	return egsPostToken(arr.AuthorizationCode, egs_integration.GrantTypeAuthorizationCode)
+	defer rcApiRedirectResponse.Close()
+
+	if err = json.UnmarshalRead(rcApiRedirectResponse, &apiRedirectResponse); err != nil {
+		return err
+	}
+
+	return egsPostToken(apiRedirectResponse.AuthorizationCode, egs_integration.GrantTypeAuthorizationCode)
 }
 
 func egsRefreshToken(refreshToken string) error {
@@ -113,22 +126,16 @@ func egsPostToken(token string, grantType egs_integration.GrantType) error {
 		return err
 	}
 
-	var ptr *egs_integration.PostTokenResponse
-	ptr, err = egs_integration.PostToken(token, grantType, client)
+	var rcPostTokenResponse io.ReadCloser
+
+	rcPostTokenResponse, err = egs_integration.PostToken(token, grantType, client)
 	if err != nil {
 		return err
 	}
 
-	if ptr.AccessToken == "" {
-		return errors.New("failed to get EGS access token")
-	}
+	defer rcPostTokenResponse.Close()
 
-	buf := bytes.NewBuffer(nil)
-	if err = json.MarshalWrite(buf, &ptr); err != nil {
-		return err
-	}
-
-	return kvTokens.Set(egsTokenKey, buf)
+	return kvTokens.Set(egsTokenKey, rcPostTokenResponse)
 }
 
 func egsGetStoredPostTokenResponse() (*egs_integration.PostTokenResponse, error) {
@@ -161,10 +168,8 @@ func egsVerifyToken(client *http.Client) (*egs_integration.PostTokenResponse, er
 	gvta := nod.Begin("verifying EGS token...")
 	defer gvta.Done()
 
-	var ptr *egs_integration.PostTokenResponse
-	var err error
-
-	if ptr, err = egsGetStoredPostTokenResponse(); err != nil {
+	ptr, err := egsGetStoredPostTokenResponse()
+	if err != nil {
 		return nil, err
 	}
 
@@ -187,13 +192,22 @@ func egsVerifyToken(client *http.Client) (*egs_integration.PostTokenResponse, er
 		}
 	}
 
-	var vtr *egs_integration.GetVerifyTokenResponse
-	vtr, err = egs_integration.GetVerifyToken(ptr.AccessToken, client)
+	var rcVerifyTokenResponse io.ReadCloser
+
+	rcVerifyTokenResponse, err = egs_integration.GetVerifyToken(ptr.AccessToken, client)
 	if err != nil {
 		return nil, err
 	}
 
-	if vtr.Token == "" {
+	defer rcVerifyTokenResponse.Close()
+
+	var verifyTokenResponse egs_integration.GetVerifyTokenResponse
+
+	if err = json.UnmarshalRead(rcVerifyTokenResponse, &verifyTokenResponse); err != nil {
+		return nil, err
+	}
+
+	if verifyTokenResponse.Token == "" {
 		return nil, errors.New("empty access token, re-connect EGS")
 	}
 
@@ -350,15 +364,12 @@ func egsFetchGameAssets(operatingSystem vangogh_integration.OperatingSystem) err
 		return err
 	}
 
-	gameAssets, err := egs_integration.GetGameAssets(egs_integration.Platform(operatingSystem), ptr.AccessToken, client)
+	rcGameAssets, err := egs_integration.GetGameAssets(egs_integration.Platform(operatingSystem), ptr.AccessToken, client)
 	if err != nil {
 		return err
 	}
 
-	buf := bytes.NewBuffer(nil)
-	if err = json.MarshalWrite(buf, &gameAssets); err != nil {
-		return err
-	}
+	defer rcGameAssets.Close()
 
 	egsOsApKey := originAvailableProductsKey(data.EpicGamesOrigin, operatingSystem)
 
@@ -368,7 +379,7 @@ func egsFetchGameAssets(operatingSystem vangogh_integration.OperatingSystem) err
 		return err
 	}
 
-	return kvAvailableProducts.Set(egsOsApKey, buf)
+	return kvAvailableProducts.Set(egsOsApKey, rcGameAssets)
 }
 
 func egsGetCatalogItem(gameAsset *egs_integration.GameAsset, ii *InstallInfo, rdx redux.Writeable) (*egs_integration.CatalogItem, error) {
@@ -404,21 +415,18 @@ func egsFetchCatalogItem(gameAsset *egs_integration.GameAsset, kvCatalogItems ke
 		return err
 	}
 
-	catalogItem, err := egs_integration.GetCatalogItem(gameAsset.Namespace, gameAsset.CatalogItemId, ptr.AccessToken, client)
+	rcCatalogItem, err := egs_integration.GetCatalogItem(gameAsset.Namespace, gameAsset.CatalogItemId, ptr.AccessToken, client)
 	if err != nil {
 		return err
 	}
 
-	buf := bytes.NewBuffer(nil)
-	if err = json.MarshalWrite(buf, &catalogItem); err != nil {
+	defer rcCatalogItem.Close()
+
+	if err = kvCatalogItems.Set(gameAsset.CatalogItemId, rcCatalogItem); err != nil {
 		return err
 	}
 
-	if err = egsReduceCatalogItem(gameAsset.AppName, catalogItem, rdx); err != nil {
-		return err
-	}
-
-	return kvCatalogItems.Set(gameAsset.CatalogItemId, buf)
+	return egsReduceCatalogItem(gameAsset.AppName, gameAsset.CatalogItemId, kvCatalogItems, rdx)
 }
 
 func egsReadLocalCatalogItem(catalogItemId string, kvCatalogItems kevlar.KeyValues) (*egs_integration.CatalogItem, error) {
@@ -466,10 +474,6 @@ func egsGetGameManifest(gameAsset *egs_integration.GameAsset, ii *InstallInfo, f
 	eggma := nod.Begin("getting EGS game manifest...")
 	defer eggma.Done()
 
-	//if err := egsValidateSupportedPlatform(ii); err != nil {
-	//	return nil, err
-	//}
-
 	gameManifestsDir := data.Pwd.AbsRelDirPath(data.GameManifests, data.Metadata)
 	kvGameManifests, err := kevlar.New(gameManifestsDir, kevlar.JsonExt)
 	if err != nil {
@@ -513,7 +517,7 @@ func egsFetchGameManifest(key string, gameAsset *egs_integration.GameAsset, oper
 		return err
 	}
 
-	gameManifest, err := egs_integration.GetGameManifest(
+	rcGameManifest, err := egs_integration.GetGameManifest(
 		gameAsset.Namespace,
 		gameAsset.CatalogItemId,
 		gameAsset.AppName,
@@ -523,12 +527,9 @@ func egsFetchGameManifest(key string, gameAsset *egs_integration.GameAsset, oper
 		return err
 	}
 
-	buf := bytes.NewBuffer(nil)
-	if err = json.MarshalWrite(buf, &gameManifest); err != nil {
-		return err
-	}
+	defer rcGameManifest.Close()
 
-	return kvGameManifests.Set(key, buf)
+	return kvGameManifests.Set(key, rcGameManifest)
 }
 
 func egsGetManifest(appName string, gameManifest *egs_integration.GameManifest, operatingSystem vangogh_integration.OperatingSystem, force bool) (*egs_integration.Manifest, error) {
@@ -612,17 +613,25 @@ func egsFetchManifest(key string, manifestUrl *url.URL, client *http.Client, kvM
 	return kvManifests.Set(key, resp.Body)
 }
 
-func egsReduceCatalogItem(appName string, catalogItem *egs_integration.CatalogItem, rdx redux.Writeable) error {
+func egsReduceCatalogItem(appName, catalogItemId string, kvCatalogItems kevlar.KeyValues, rdx redux.Writeable) error {
 
 	if err := rdx.MustHave(vangogh_integration.TitleProperty); err != nil {
 		return err
 	}
 
-	if err := rdx.ReplaceValues(vangogh_integration.TitleProperty, appName, catalogItem.Title); err != nil {
+	rcCatalogItem, err := kvCatalogItems.Get(catalogItemId)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	defer rcCatalogItem.Close()
+
+	var catalogItem egs_integration.CatalogItem
+	if err = json.UnmarshalRead(rcCatalogItem, &catalogItem); err != nil {
+		return err
+	}
+
+	return rdx.ReplaceValues(vangogh_integration.TitleProperty, appName, catalogItem.Title)
 }
 
 func egsRemoveChunks(appName string, operatingSystem vangogh_integration.OperatingSystem, originData *data.OriginData) error {
