@@ -4,7 +4,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"maps"
 	"net/url"
 	"slices"
 	"strconv"
@@ -158,7 +157,10 @@ func listAvailableProducts(ii *InstallInfo, update bool) error {
 	for _, ap := range availableProducts {
 		title := fmt.Sprintf(" - %s (%s: %s) OS:%v", ap.Title, ii.Origin, ap.Id, ap.OperatingSystems)
 		if len(ap.Dlc) > 0 {
-			dlcs := slices.Collect(maps.Values(ap.Dlc))
+			var dlcs []string
+			for dlcId, dlcTitle := range ap.Dlc {
+				dlcs = append(dlcs, fmt.Sprintf("%s (%s)", dlcTitle, dlcId))
+			}
 			title += fmt.Sprintf(" DLC:%s", strings.Join(dlcs, "; "))
 		}
 		apSummary[title] = []string{}
