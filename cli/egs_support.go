@@ -437,12 +437,12 @@ func egsReadLocalCatalogItem(catalogItemId string, kvCatalogItems kevlar.KeyValu
 	}
 	defer rcCatalogItem.Close()
 
-	var catalogItem egs_integration.CatalogItem
-	if err = json.UnmarshalRead(rcCatalogItem, &catalogItem); err != nil {
+	var catalogItemMap map[string]egs_integration.CatalogItem
+	if err = json.UnmarshalRead(rcCatalogItem, &catalogItemMap); err != nil {
 		return nil, err
 	}
 
-	return &catalogItem, nil
+	return new(catalogItemMap[catalogItemId]), nil
 }
 
 func egsGetGameAsset(appName string, ii *InstallInfo) (*egs_integration.GameAsset, error) {
