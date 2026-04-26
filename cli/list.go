@@ -129,9 +129,11 @@ func listAvailableProducts(ii *InstallInfo, update bool) error {
 
 	fetchAvailable := update || ii.force
 
+	if ii.Origin == data.UnknownOrigin {
+		ii.Origin = data.VangoghOrigin
+	}
+
 	switch ii.Origin {
-	case data.UnknownOrigin:
-		fallthrough
 	case data.VangoghOrigin:
 		if availableProducts, err = vangoghGetAvailableProducts(fetchAvailable); err != nil {
 			return err
