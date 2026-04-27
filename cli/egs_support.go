@@ -281,8 +281,6 @@ func egsGameAssetsAvailableProducts(
 
 	availableProducts := make([]vangogh_integration.AvailableProduct, 0)
 
-	dlcCatalogItems := make(map[string]map[string]string)
-
 	for operatingSystem, gameAssets := range osGameAssets {
 
 		for _, gameAsset := range gameAssets {
@@ -293,16 +291,6 @@ func egsGameAssetsAvailableProducts(
 			}
 
 			if len(catalogItem.MainGameItemList) > 0 {
-				for _, mainGameItem := range catalogItem.MainGameItemList {
-					for _, releaseInfo := range mainGameItem.ReleaseInfo {
-						if dlcCatalogItems[releaseInfo.AppId] == nil {
-							dlcCatalogItems[releaseInfo.AppId] = make(map[string]string)
-						}
-						for _, dlcReleaseInfo := range catalogItem.ReleaseInfo {
-							dlcCatalogItems[releaseInfo.AppId][dlcReleaseInfo.AppId] = catalogItem.Title
-						}
-					}
-				}
 				continue
 			}
 
@@ -315,14 +303,16 @@ func egsGameAssetsAvailableProducts(
 					OperatingSystems: []vangogh_integration.OperatingSystem{operatingSystem},
 				}
 
+				var dlcGameAssets map[string]string
+				dlcGameAssets, err = egsCatalogItemDlcGameAssets(operatingSystem, catalogItem, ii.force)
+				if err != nil {
+					return nil, err
+				}
+
+				ap.Dlc = dlcGameAssets
+
 				availableProducts = append(availableProducts, ap)
 			}
-		}
-	}
-
-	for appName, idTitle := range dlcCatalogItems {
-		if index := availableProductIndex(appName, availableProducts); index != -1 {
-			availableProducts[index].Dlc = idTitle
 		}
 	}
 
@@ -990,4 +980,44 @@ func egsAssembleValidateChunks(appName string, ii *InstallInfo, originData *data
 	}
 
 	return nil
+}
+
+func egsContainsGameAsset(appName string, gameAssets []egs_integration.GameAsset) bool {
+	for _, ga := range gameAssets {
+		if ga.AppName == appName {
+			return true
+		}
+	}
+	return false
+}
+
+func egsCatalogItemDlcGameAssets(operatingSystem vangogh_integration.OperatingSystem, catalogItem *egs_integration.CatalogItem, force bool) (map[string]string, error) {
+
+	osGameAssets, err := egsGetGameAssets(force)
+	if err != nil {
+		return nil, err
+	}
+
+	dlcGameAssets := make(map[string]string)
+
+	if len(catalogItem.DlcItemList) == 0 {
+		return dlcGameAssets, nil
+	}
+
+	for gaOs, gameAssets := range osGameAssets {
+		if gaOs != operatingSystem {
+			continue
+		}
+
+		for _, dlcItem := range catalogItem.DlcItemList {
+			for _, releaseInfo := range dlcItem.ReleaseInfo {
+				if egsContainsGameAsset(releaseInfo.AppId, gameAssets) {
+					dlcGameAssets[releaseInfo.AppId] = dlcItem.Title
+				}
+			}
+		}
+
+	}
+
+	return dlcGameAssets, nil
 }
