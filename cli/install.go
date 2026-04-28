@@ -204,6 +204,11 @@ func originAddSteamShortcut(id, forId string, ii *InstallInfo, originData *data.
 		}
 	case data.EpicGamesOrigin:
 
+		// do not create Steam shortcut for EGS DLCs
+		if len(originData.CatalogItem.MainGameItemList) > 0 {
+			return nil
+		}
+
 		var gamesDbProduct *gog_integration.GamesDbProduct
 		gamesDbProduct, err = gogGetGamesDbEpic(id, false)
 		if err != nil {

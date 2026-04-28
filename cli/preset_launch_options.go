@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"net/url"
 	"path/filepath"
 
@@ -35,7 +36,10 @@ func PresetLaunchOptions(id string, request *InstallInfo, rdx redux.Writeable) e
 	defer ploa.Done()
 
 	ii, err := matchInstalledInfo(id, request, rdx)
-	if err != nil {
+	if errors.Is(err, ErrInstallInfoNotFound) {
+		ploa.EndWithResult("install info not found")
+		return nil
+	} else if err != nil {
 		return err
 	}
 
