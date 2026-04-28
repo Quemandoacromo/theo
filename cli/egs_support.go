@@ -304,7 +304,7 @@ func egsGameAssetsAvailableProducts(
 				}
 
 				var dlcGameAssets map[string]string
-				dlcGameAssets, err = egsCatalogItemDlcGameAssets(operatingSystem, catalogItem, ii.force)
+				dlcGameAssets, err = egsCatalogItemDlcGameAssets(osGameAssets, operatingSystem, catalogItem, ii.force)
 				if err != nil {
 					return nil, err
 				}
@@ -1013,12 +1013,7 @@ func egsContainsGameAsset(appName string, gameAssets []egs_integration.GameAsset
 	return false
 }
 
-func egsCatalogItemDlcGameAssets(operatingSystem vangogh_integration.OperatingSystem, catalogItem *egs_integration.CatalogItem, force bool) (map[string]string, error) {
-
-	osGameAssets, err := egsGetGameAssets(force)
-	if err != nil {
-		return nil, err
-	}
+func egsCatalogItemDlcGameAssets(osGameAssets map[vangogh_integration.OperatingSystem][]egs_integration.GameAsset, operatingSystem vangogh_integration.OperatingSystem, catalogItem *egs_integration.CatalogItem, force bool) (map[string]string, error) {
 
 	dlcGameAssets := make(map[string]string)
 
@@ -1057,7 +1052,12 @@ func egsInstallDownloadableContent(ii *InstallInfo, catalogItem *egs_integration
 	eidca := nod.Begin("installing available DLCs for %s...", catalogItem.Title)
 	defer eidca.Done()
 
-	dlcGameAssets, err := egsCatalogItemDlcGameAssets(ii.OperatingSystem, catalogItem, ii.force)
+	osGameAssets, err := egsGetGameAssets(ii.force)
+	if err != nil {
+		return err
+	}
+
+	dlcGameAssets, err := egsCatalogItemDlcGameAssets(osGameAssets, ii.OperatingSystem, catalogItem, ii.force)
 	if err != nil {
 		return err
 	}
@@ -1088,7 +1088,12 @@ func egsUninstallDownloadableContent(appName string, ii *InstallInfo, rdx redux.
 		return err
 	}
 
-	catalogItemDlcs, err := egsCatalogItemDlcGameAssets(ii.OperatingSystem, catalogItem, ii.force)
+	osGameAssets, err := egsGetGameAssets(ii.force)
+	if err != nil {
+		return err
+	}
+
+	catalogItemDlcs, err := egsCatalogItemDlcGameAssets(osGameAssets, ii.OperatingSystem, catalogItem, ii.force)
 	for dlcItemId := range catalogItemDlcs {
 		if err = originUninstall(dlcItemId, ii, rdx); err != nil {
 			return err
