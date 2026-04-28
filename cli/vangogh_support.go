@@ -266,3 +266,15 @@ func vangoghProductDetailsSize(productDetails *vangogh_integration.ProductDetail
 
 	return totalEstimatedBytes
 }
+
+func vangoghUninstallProduct(id string, ii *InstallInfo, rdx redux.Writeable) error {
+
+	oupa := nod.Begin(" uninstalling %s %s-%s...", id, ii.OperatingSystem, ii.LangCode)
+	defer oupa.Done()
+
+	if err := removeInventoriedFiles(id, ii, rdx); err != nil {
+		return err
+	}
+
+	return nil
+}

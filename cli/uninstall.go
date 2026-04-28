@@ -64,6 +64,10 @@ func Uninstall(id string, request *InstallInfo, purge bool) error {
 		return err
 	}
 
+	if err = originPostUninstall(id, installInfo, rdx); err != nil {
+		return err
+	}
+
 	if purge {
 		if err = originPurgeInstallation(id, installInfo, rdx); err != nil {
 			return err
@@ -167,14 +171,11 @@ func originPurgeInstallation(id string, installInfo *InstallInfo, rdx redux.Read
 	return nil
 }
 
-func vangoghUninstallProduct(id string, ii *InstallInfo, rdx redux.Writeable) error {
-
-	oupa := nod.Begin(" uninstalling %s %s-%s...", id, ii.OperatingSystem, ii.LangCode)
-	defer oupa.Done()
-
-	if err := removeInventoriedFiles(id, ii, rdx); err != nil {
-		return err
+func originPostUninstall(id string, ii *InstallInfo, rdx redux.Writeable) error {
+	switch ii.Origin {
+	case data.EpicGamesOrigin:
+		return egsUninstallDownloadableContent(id, ii, rdx)
+	default:
+		return nil
 	}
-
-	return nil
 }

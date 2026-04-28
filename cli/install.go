@@ -276,7 +276,7 @@ func originPostInstall(id string, ii *InstallInfo, originData *data.OriginData, 
 			return err
 		}
 
-		if err := egsInstallDownloadableContent(ii, originData); err != nil {
+		if err := egsInstallDownloadableContent(ii, originData.CatalogItem); err != nil {
 			return err
 		}
 

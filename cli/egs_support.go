@@ -1044,20 +1044,20 @@ func egsCatalogItemDlcGameAssets(operatingSystem vangogh_integration.OperatingSy
 	return dlcGameAssets, nil
 }
 
-func egsInstallDownloadableContent(ii *InstallInfo, originData *data.OriginData) error {
+func egsInstallDownloadableContent(ii *InstallInfo, catalogItem *egs_integration.CatalogItem) error {
 
 	if !slices.Contains(ii.DownloadTypes, vangogh_integration.DLC) {
 		return nil
 	}
 
-	if len(originData.CatalogItem.DlcItemList) == 0 {
+	if len(catalogItem.DlcItemList) == 0 {
 		return nil
 	}
 
-	eidca := nod.Begin("installing available DLCs for %s...", originData.CatalogItem.Title)
+	eidca := nod.Begin("installing available DLCs for %s...", catalogItem.Title)
 	defer eidca.Done()
 
-	dlcGameAssets, err := egsCatalogItemDlcGameAssets(ii.OperatingSystem, originData.CatalogItem, ii.force)
+	dlcGameAssets, err := egsCatalogItemDlcGameAssets(ii.OperatingSystem, catalogItem, ii.force)
 	if err != nil {
 		return err
 	}
@@ -1068,6 +1068,31 @@ func egsInstallDownloadableContent(ii *InstallInfo, originData *data.OriginData)
 		}
 
 		ii.DownloadableContent = append(ii.DownloadableContent, dlcTitle)
+	}
+
+	return nil
+}
+
+func egsUninstallDownloadableContent(appName string, ii *InstallInfo, rdx redux.Writeable) error {
+
+	eudca := nod.Begin("uninstalling DLCs for %s...", appName)
+	defer eudca.Done()
+
+	gameAsset, err := egsGetGameAsset(appName, ii)
+	if err != nil {
+		return err
+	}
+
+	catalogItem, err := egsGetCatalogItem(gameAsset, ii, rdx)
+	if err != nil {
+		return err
+	}
+
+	catalogItemDlcs, err := egsCatalogItemDlcGameAssets(ii.OperatingSystem, catalogItem, ii.force)
+	for dlcItemId := range catalogItemDlcs {
+		if err = originUninstall(dlcItemId, ii, rdx); err != nil {
+			return err
+		}
 	}
 
 	return nil
