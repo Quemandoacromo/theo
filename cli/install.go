@@ -138,7 +138,7 @@ func Install(id string, ii *InstallInfo) error {
 		}
 	}
 
-	if err = pinInstallInfo(id, ii, rdx); err != nil {
+	if err = originPinInstallInfo(id, ii, originData, rdx); err != nil {
 		return err
 	}
 
@@ -154,6 +154,21 @@ func Install(id string, ii *InstallInfo) error {
 	}
 
 	return nil
+}
+
+func originPinInstallInfo(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
+
+	switch ii.Origin {
+	case data.EpicGamesOrigin:
+		// don't pin EGS DLC install info, as it's already tracked in the pinned main game item install info
+		if len(originData.CatalogItem.MainGameItemList) > 0 {
+			return nil
+		}
+	default:
+		// do nothing
+	}
+
+	return pinInstallInfo(id, ii, rdx)
 }
 
 func originAddSteamShortcut(id, forId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
@@ -255,6 +270,11 @@ func originPostInstall(id string, ii *InstallInfo, originData *data.OriginData, 
 		if err := egsChmodLauncherExe(id, ii, originData, rdx); err != nil {
 			return err
 		}
+
+		if err := egsInstallDownloadableContent(ii, originData); err != nil {
+			return err
+		}
+
 	default:
 		// do nothing
 	}
@@ -615,14 +635,20 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 
 		osEgsAppsDir := filepath.Join(egsAppsDir, ii.OperatingSystem.String())
 
-		var installedPath string
-		if title, ok := rdx.GetLastVal(vangogh_integration.TitleProperty, id); ok && title != "" {
-			installedPath = pathways.Sanitize(title)
+		var appTitlePath string
+
+		// for EGS DLCs - use main game item appName to set the installation directory
+		if requiresGame, ok := rdx.GetLastVal(vangogh_integration.RequiresGamesProperty, id); ok && requiresGame != "" {
+			id = requiresGame
+		}
+
+		if title, sure := rdx.GetLastVal(vangogh_integration.TitleProperty, id); sure && title != "" {
+			appTitlePath = pathways.Sanitize(title)
 		} else {
 			return "", errors.New("product title not defined for: " + id)
 		}
 
-		return filepath.Join(osEgsAppsDir, installedPath), nil
+		return filepath.Join(osEgsAppsDir, appTitlePath), nil
 	default:
 		return "", ii.Origin.ErrUnsupportedOrigin()
 	}

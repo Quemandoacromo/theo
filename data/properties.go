@@ -61,6 +61,7 @@ func AllProperties() []string {
 			vangogh_integration.IconProperty,
 			vangogh_integration.IconSquareProperty,
 			vangogh_integration.BackgroundProperty,
+			vangogh_integration.RequiresGamesProperty,
 			BundleNameProperty,
 			InstallInfoProperty,
 			InstallDateProperty,

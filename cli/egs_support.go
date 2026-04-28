@@ -627,7 +627,7 @@ func egsFetchManifest(key string, manifestUrl *url.URL, client *http.Client, kvM
 
 func egsReduceCatalogItem(appName, catalogItemId string, kvCatalogItems kevlar.KeyValues, rdx redux.Writeable) error {
 
-	if err := rdx.MustHave(vangogh_integration.TitleProperty); err != nil {
+	if err := rdx.MustHave(vangogh_integration.TitleProperty, vangogh_integration.RequiresGamesProperty); err != nil {
 		return err
 	}
 
@@ -638,12 +638,34 @@ func egsReduceCatalogItem(appName, catalogItemId string, kvCatalogItems kevlar.K
 
 	defer rcCatalogItem.Close()
 
-	var catalogItem map[string]egs_integration.CatalogItem
-	if err = json.UnmarshalRead(rcCatalogItem, &catalogItem); err != nil {
+	var catalogItemMap map[string]egs_integration.CatalogItem
+	if err = json.UnmarshalRead(rcCatalogItem, &catalogItemMap); err != nil {
 		return err
 	}
 
-	return rdx.ReplaceValues(vangogh_integration.TitleProperty, appName, catalogItem[catalogItemId].Title)
+	catalogItem := catalogItemMap[catalogItemId]
+
+	if err = rdx.ReplaceValues(vangogh_integration.TitleProperty, appName, catalogItem.Title); err != nil {
+		return err
+	}
+
+	if len(catalogItem.MainGameItemList) > 0 {
+		var mainGameItems []string
+
+		for _, mainGameItem := range catalogItem.MainGameItemList {
+			for _, releaseInfo := range mainGameItem.ReleaseInfo {
+				mainGameItems = append(mainGameItems, releaseInfo.AppId)
+			}
+		}
+
+		if len(mainGameItems) > 0 {
+			if err = rdx.ReplaceValues(vangogh_integration.RequiresGamesProperty, appName, mainGameItems...); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func egsRemoveChunks(appName string, operatingSystem vangogh_integration.OperatingSystem, originData *data.OriginData) error {
@@ -1020,4 +1042,33 @@ func egsCatalogItemDlcGameAssets(operatingSystem vangogh_integration.OperatingSy
 	}
 
 	return dlcGameAssets, nil
+}
+
+func egsInstallDownloadableContent(ii *InstallInfo, originData *data.OriginData) error {
+
+	if !slices.Contains(ii.DownloadTypes, vangogh_integration.DLC) {
+		return nil
+	}
+
+	if len(originData.CatalogItem.DlcItemList) == 0 {
+		return nil
+	}
+
+	eidca := nod.Begin("installing available DLCs for %s...", originData.CatalogItem.Title)
+	defer eidca.Done()
+
+	dlcGameAssets, err := egsCatalogItemDlcGameAssets(ii.OperatingSystem, originData.CatalogItem, ii.force)
+	if err != nil {
+		return err
+	}
+
+	for dlcAppName, dlcTitle := range dlcGameAssets {
+		if err = Install(dlcAppName, ii); err != nil {
+			return err
+		}
+
+		ii.DownloadableContent = append(ii.DownloadableContent, dlcTitle)
+	}
+
+	return nil
 }
