@@ -1,18 +1,12 @@
 package cli
 
 import (
-	"errors"
-	"fmt"
 	"net/url"
-	"path"
-	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/arelate/southern_light/egs_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
-	"github.com/boggydigital/dolo"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
 )
@@ -166,133 +160,4 @@ func originDownloadData(id string,
 	default:
 		return ii.Origin.ErrUnsupportedOrigin()
 	}
-}
-
-func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable, manualUrlFilter ...string) error {
-
-	if err := rdx.MustHave(data.VangoghProperties()...); err != nil {
-		return err
-	}
-
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
-
-	if err := originHasFreeSpace(id, downloadsDir, ii, originData, manualUrlFilter...); err != nil {
-		return err
-	}
-
-	dc := dolo.DefaultClient
-
-	if token, ok := rdx.GetLastVal(data.VangoghSessionTokenProperty, data.VangoghSessionTokenProperty); ok && token != "" {
-		dc.SetAuthorizationBearer(token)
-	}
-
-	dls := originData.ProductDetails.DownloadLinks.
-		FilterOperatingSystems(ii.OperatingSystem).
-		FilterLanguageCodes(ii.LangCode).
-		FilterDownloadTypes(ii.DownloadTypes...)
-
-	if len(dls) == 0 {
-		return errors.New("no links are matching operating params")
-	}
-
-	for _, dl := range dls {
-
-		if dl.LocalFilename == "" {
-			return errors.New("unresolved local filename for manual-url " + dl.ManualUrl)
-		}
-
-		if len(manualUrlFilter) > 0 && !slices.Contains(manualUrlFilter, dl.ManualUrl) {
-			continue
-		}
-
-		if dl.ValidationStatus != vangogh_integration.ValidationStatusSuccess &&
-			dl.ValidationStatus != vangogh_integration.ValidationStatusSelfValidated &&
-			dl.ValidationStatus != vangogh_integration.ValidationStatusMissingChecksum {
-			errMsg := fmt.Sprintf("%s validation status %s prevented download", dl.Name, dl.ValidationStatus)
-			return errors.New(errMsg)
-		}
-
-		fa := nod.NewProgress(" - %s...", dl.LocalFilename)
-
-		query := url.Values{
-			"manual-url":    {dl.ManualUrl},
-			"id":            {id},
-			"download-type": {dl.DownloadType.String()},
-		}
-
-		fileUrl, err := data.VangoghUrl(data.HttpFilesPath, query, rdx)
-		if err != nil {
-			fa.EndWithResult(err.Error())
-			continue
-		}
-
-		if err = dc.Download(fileUrl, ii.force, fa, downloadsDir, id, dl.LocalFilename); err != nil {
-			fa.EndWithResult(err.Error())
-			continue
-		}
-
-		fa.Done()
-	}
-
-	return nil
-}
-
-func steamDownloadData(steamAppId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable) error {
-	steamAppsDir := data.Pwd.AbsDirPath(data.SteamApps)
-
-	if err := originHasFreeSpace(steamAppId, steamAppsDir, ii, originData); err != nil {
-		return err
-	}
-
-	return steamUpdateApp(steamAppId, ii.OperatingSystem, rdx)
-}
-
-func egsDownloadChunks(appName string, ii *InstallInfo, originData *data.OriginData) error {
-
-	edca := nod.NewProgress("downloading EGS chunks...")
-	edca.Done()
-
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
-
-	if err := originHasFreeSpace(appName, downloadsDir, ii, originData); err != nil {
-		return err
-	}
-
-	edca.Total(uint64(egsManifestSize(originData.Manifest)))
-
-	cdnUrls, err := originData.GameManifest.Urls()
-	if err != nil {
-		return err
-	}
-
-	dc := dolo.DefaultClient
-
-	var cdnUrl *url.URL
-	for _, cu := range cdnUrls {
-		cdnUrl = cu
-		break
-	}
-
-	if cdnUrl == nil {
-		return errors.New("downloading EGS chunks requires CDN url")
-	}
-
-	absChunksDownloadsDir := data.AbsChunksDownloadDir(appName, ii.OperatingSystem)
-
-	originalPath := strings.TrimSuffix(cdnUrl.Path, filepath.Base(cdnUrl.Path))
-	cdnUrl.RawQuery = ""
-
-	for _, chunk := range originData.Manifest.ChunkList.Chunks {
-
-		chunkPath := chunk.Path(originData.Manifest.Metadata.FeatureLevel)
-		cdnUrl.Path = path.Join(originalPath, chunkPath)
-
-		if err = dc.Download(cdnUrl, ii.force, nil, absChunksDownloadsDir, chunkPath); err != nil {
-			return err
-		}
-
-		edca.Progress(chunk.FileSize)
-	}
-
-	return nil
 }

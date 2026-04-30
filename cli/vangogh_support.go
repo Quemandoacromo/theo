@@ -2,15 +2,24 @@ package cli
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"slices"
+	"time"
 
+	"github.com/arelate/southern_light/steam_grid"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/author"
+	"github.com/boggydigital/dolo"
 	"github.com/boggydigital/kevlar"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
@@ -277,4 +286,772 @@ func vangoghUninstallProduct(id string, ii *InstallInfo, rdx redux.Writeable) er
 	}
 
 	return nil
+}
+
+func vangoghShortcutAssets(productDetails *vangogh_integration.ProductDetails, rdx redux.Readable) (map[steam_grid.Asset]*url.URL, error) {
+
+	shortcutAssets := make(map[steam_grid.Asset]*url.URL)
+
+	for _, asset := range steam_grid.ShortcutAssets {
+
+		var imageId string
+		switch asset {
+		case steam_grid.Header:
+			imageId = productDetails.Images.Image
+		case steam_grid.LibraryCapsule:
+			imageId = productDetails.Images.VerticalImage
+		case steam_grid.LibraryHero:
+			if productDetails.Images.Hero != "" {
+				imageId = productDetails.Images.Hero
+			} else {
+				imageId = productDetails.Images.Background
+			}
+		case steam_grid.LibraryLogo:
+			imageId = productDetails.Images.Logo
+		case steam_grid.ClientIcon:
+			if productDetails.Images.IconSquare != "" {
+				imageId = productDetails.Images.IconSquare
+			} else {
+				imageId = productDetails.Images.Icon
+			}
+		default:
+			return nil, errors.New("unexpected shortcut asset " + asset.String())
+		}
+
+		if imageId != "" {
+			imageQuery := url.Values{
+				"id": {imageId},
+			}
+
+			vangoghImageUrl, err := data.VangoghUrl(data.HttpImagePath, imageQuery, rdx)
+			if err != nil {
+				return nil, err
+			}
+
+			shortcutAssets[asset] = vangoghImageUrl
+		}
+	}
+
+	return shortcutAssets, nil
+
+}
+
+func vangoghSetupConnection(urlStr, username, password string, rdx redux.Writeable, reset bool) error {
+
+	if err := rdx.MustHave(data.VangoghProperties()...); err != nil {
+		return err
+	}
+
+	if reset {
+		if err := vangoghResetConnection(rdx); err != nil {
+			return err
+		}
+	}
+
+	if err := rdx.ReplaceValues(data.VangoghUrlProperty, data.VangoghUrlProperty, urlStr); err != nil {
+		return err
+	}
+
+	if err := rdx.ReplaceValues(data.VangoghUsernameProperty, data.VangoghUsernameProperty, username); err != nil {
+		return err
+	}
+
+	if err := vangoghUpdateSessionToken(password, rdx); err != nil {
+		return err
+	}
+
+	return vangoghValidateSessionToken(rdx)
+}
+
+func vangoghResetConnection(rdx redux.Writeable) error {
+	rvca := nod.Begin("resetting vangogh connection...")
+	defer rvca.Done()
+
+	for _, vp := range data.VangoghProperties() {
+		if err := rdx.CutKeys(vp, vp); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func vangoghValidateSessionToken(rdx redux.Readable) error {
+
+	tsa := nod.Begin("validating vangogh session token...")
+	defer tsa.Done()
+
+	if err := rdx.MustHave(data.VangoghProperties()...); err != nil {
+		return err
+	}
+
+	req, err := data.VangoghRequest(http.MethodPost, data.ApiAuthSessionPath, nil, rdx)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 401 {
+		msg := "session is not valid, please connect again"
+		tsa.EndWithResult(msg)
+		return errors.New(msg)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return errors.New(resp.Status)
+	}
+
+	var ste author.SessionTokenExpires
+
+	if err = json.UnmarshalRead(resp.Body, &ste); err != nil {
+		return err
+	}
+
+	utcNow := time.Now().UTC()
+
+	if utcNow.Before(ste.Expires.Add(-1 * time.Hour * author.SessionNearExpirationHours)) {
+		tsa.EndWithResult("session is valid")
+		return nil
+	} else {
+		msg := "vangogh session expired or expires soon, connect to update"
+		tsa.EndWithResult(msg)
+		return errors.New(msg)
+	}
+
+}
+
+func vangoghUpdateSessionToken(password string, rdx redux.Writeable) error {
+	rsa := nod.Begin("updating vangogh session token...")
+	defer rsa.Done()
+
+	if err := rdx.MustHave(data.VangoghProperties()...); err != nil {
+		return err
+	}
+
+	var username string
+	if up, ok := rdx.GetLastVal(data.VangoghUsernameProperty, data.VangoghUsernameProperty); ok && up != "" {
+		username = up
+	} else {
+		return errors.New("username not found")
+	}
+
+	usernamePassword := url.Values{}
+	usernamePassword.Set(author.UsernameParam, username)
+	usernamePassword.Set(author.PasswordParam, password)
+
+	req, err := data.VangoghRequest(http.MethodPost, data.ApiAuthUserPath, usernamePassword, rdx)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return errors.New(resp.Status)
+	}
+
+	var ste author.SessionTokenExpires
+
+	if err = json.UnmarshalRead(resp.Body, &ste); err != nil {
+		return err
+	}
+
+	if err = rdx.ReplaceValues(data.VangoghSessionTokenProperty, data.VangoghSessionTokenProperty, ste.Token); err != nil {
+		return err
+	}
+
+	if err = rdx.ReplaceValues(data.VangoghSessionExpiresProperty, data.VangoghSessionExpiresProperty, ste.Expires.Format(http.TimeFormat)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func vangoghUnpackPlace(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
+
+	ipa := nod.Begin("installing %s %s-%s...", id, ii.OperatingSystem, ii.LangCode)
+	defer ipa.Done()
+
+	dls := originData.ProductDetails.DownloadLinks.
+		FilterOperatingSystems(ii.OperatingSystem).
+		FilterLanguageCodes(ii.LangCode).
+		FilterDownloadTypes(ii.DownloadTypes...)
+
+	if len(dls) == 0 {
+		ipa.EndWithResult("no links are matching install params")
+		return nil
+	}
+
+	dlcNames := make(map[string]any)
+
+	for _, dl := range dls {
+		if ii.OperatingSystem != dl.OperatingSystem ||
+			ii.LangCode != dl.LanguageCode {
+			continue
+		}
+		if dl.DownloadType == vangogh_integration.DLC {
+			dlcNames[dl.Name] = nil
+		}
+	}
+
+	if len(dlcNames) > 0 {
+		ii.DownloadableContent = slices.Collect(maps.Keys(dlcNames))
+	}
+
+	// vangogh installation:
+	// 1. check available space
+	// 2. get protected locations files (e.g. Desktop shortcuts on Linux)
+	// 3. unpack installers (e.g. pkgutil on macOS, execute .sh on Linux; run setup on Windows)
+	// 4. perform post-unpack actions (e.g. reduce bundleName on macOS)
+	// 5. uninstall if installed directory exists and forcing install (will be used for updates)
+	// 6. create inventory of unpacked files
+	// 7. place (move unpacked to install folder)
+	// 8. perform post-install actions (e.g. run post-install script and remove xattrs on macOS)
+	// 9. cleanup protected locations
+	// 10. cleanup unpack directory
+
+	// 1
+	installedAppsDir := data.Pwd.AbsDirPath(data.InstalledApps)
+
+	if err := originHasFreeSpace(id, installedAppsDir, ii, originData); err != nil {
+		return err
+	}
+
+	// 2
+	preInstallFiles, err := vangoghGetProtectedLocationsFiles(ii)
+	if err != nil {
+		return err
+	}
+
+	// 3
+	unpackDir, err := vangoghGetUnpackDir(id, ii, rdx)
+	if err != nil {
+		return err
+	}
+
+	if err = vangoghUnpackInstallers(id, ii, dls, rdx, unpackDir); err != nil {
+		return err
+	}
+
+	// 4
+	if err = vangoghPostUnpackActions(id, ii, dls, unpackDir, rdx); err != nil {
+		return err
+	}
+
+	// 5
+	absInstalledDir, err := originOsInstalledPath(id, ii, rdx)
+	if err != nil {
+		return err
+	}
+
+	if _, err = os.Stat(absInstalledDir); err == nil && ii.force {
+		if err = vangoghUninstallProduct(id, ii, rdx); err != nil {
+			return err
+		}
+	}
+
+	// 6
+	unpackedInventory, err := vangoghGetInventory(id, ii, dls, rdx, unpackDir)
+	if err != nil {
+		return err
+	}
+
+	if err = writeInventory(id, ii.LangCode, ii.OperatingSystem, rdx, unpackedInventory...); err != nil {
+		return err
+	}
+
+	// 7
+	if err = vangoghPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir); err != nil {
+		return err
+	}
+
+	// 8
+	if err = vangoghPostInstallActions(id, ii, dls, rdx, unpackDir); err != nil {
+		return err
+	}
+
+	// 9
+	postInstallFiles, err := vangoghGetProtectedLocationsFiles(ii)
+	if err != nil {
+		return err
+	}
+
+	if err = removeNewFiles(preInstallFiles, postInstallFiles); err != nil {
+		return err
+	}
+
+	// 10
+	if err = os.RemoveAll(unpackDir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func vangoghGetUnpackDir(id string, ii *InstallInfo, rdx redux.Readable) (string, error) {
+
+	unpackDir := filepath.Join(data.Pwd.AbsDirPath(data.Temp), id)
+
+	switch ii.OperatingSystem {
+	case vangogh_integration.Windows:
+		switch data.CurrentOs() {
+		case vangogh_integration.MacOS:
+			fallthrough
+		case vangogh_integration.Linux:
+			absPrefixDir, err := data.AbsPrefixDir(id, ii.Origin, rdx)
+			if err != nil {
+				return "", err
+			}
+			return filepath.Join(absPrefixDir, prefixRelDriveCDir, "Temp", id), nil
+		default:
+			// do nothing
+		}
+	default:
+		// do nothing
+	}
+	return unpackDir, nil
+}
+
+func vangoghUnpackInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Writeable, unpackDir string) error {
+
+	if _, err := os.Stat(unpackDir); err == nil {
+		if ii.force {
+			if err = os.RemoveAll(unpackDir); err != nil {
+				return err
+			}
+		} else {
+			return nil
+		}
+	}
+
+	if _, err := os.Stat(unpackDir); os.IsNotExist(err) {
+		if err = os.MkdirAll(unpackDir, 0755); err != nil {
+			return err
+		}
+	}
+
+	switch ii.OperatingSystem {
+	case vangogh_integration.MacOS:
+		return macOsUnpackInstallers(id, dls, unpackDir, ii.force)
+	case vangogh_integration.Linux:
+		return linuxExecuteInstallers(id, dls, unpackDir)
+	case vangogh_integration.Windows:
+		switch data.CurrentOs() {
+		case vangogh_integration.MacOS:
+			fallthrough
+		case vangogh_integration.Linux:
+			return prefixUnpackInstallers(id, ii, dls, rdx, unpackDir)
+		default:
+			return ii.OperatingSystem.ErrUnsupported()
+		}
+	default:
+		return ii.OperatingSystem.ErrUnsupported()
+	}
+}
+
+func vangoghPostUnpackActions(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, unpackDir string, rdx redux.Writeable) error {
+	switch ii.OperatingSystem {
+	case vangogh_integration.MacOS:
+		return macOsReduceBundleNameProperty(id, dls, unpackDir, rdx)
+	case vangogh_integration.Linux:
+		return linuxRemoveMojoSetupDirs(id, dls, unpackDir)
+	default:
+		return nil
+	}
+}
+
+func vangoghGetInventory(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) ([]string, error) {
+
+	switch ii.OperatingSystem {
+	case vangogh_integration.MacOS:
+		return macOsGetInventory(id, dls, rdx, unpackDir, ii.force)
+	default:
+		return getInventory(ii.OperatingSystem, dls, unpackDir)
+	}
+}
+
+func vangoghPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Writeable, unpackDir string) error {
+	switch ii.OperatingSystem {
+	case vangogh_integration.MacOS:
+		return macOsPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir, ii.force)
+	case vangogh_integration.Linux:
+		return linuxPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir)
+	case vangogh_integration.Windows:
+		switch data.CurrentOs() {
+		case vangogh_integration.MacOS:
+			fallthrough
+		case vangogh_integration.Linux:
+			return prefixPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir)
+		default:
+			return ii.OperatingSystem.ErrUnsupported()
+		}
+	default:
+		return ii.OperatingSystem.ErrUnsupported()
+	}
+}
+
+func vangoghPlaceUnpackedLinkPayload(link *vangogh_integration.ProductDownloadLink, absUnpackedPath, absInstallationPath string) error {
+
+	mpda := nod.Begin(" placing unpacked %s files...", link.LocalFilename)
+	defer mpda.Done()
+
+	if _, err := os.Stat(absInstallationPath); os.IsNotExist(err) {
+		if err = os.MkdirAll(absInstallationPath, 0755); err != nil {
+			return err
+		}
+	}
+
+	// enumerate all files in the payload directory
+	relFiles, err := relWalkDir(absUnpackedPath)
+	if err != nil {
+		return err
+	}
+
+	for _, relFile := range relFiles {
+
+		absSrcPath := filepath.Join(absUnpackedPath, relFile)
+
+		absDstPath := filepath.Join(absInstallationPath, relFile)
+		absDstDir, _ := filepath.Split(absDstPath)
+
+		if _, err = os.Stat(absDstDir); os.IsNotExist(err) {
+			if err = os.MkdirAll(absDstDir, 0755); err != nil {
+				return err
+			}
+		}
+
+		if err = os.Rename(absSrcPath, absDstPath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func vangoghPostInstallActions(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
+	switch ii.OperatingSystem {
+	case vangogh_integration.MacOS:
+		return macOsPostInstallActions(id, ii, dls, rdx, unpackDir, ii.force)
+	default:
+		return nil
+	}
+}
+
+func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable, manualUrlFilter ...string) error {
+
+	if err := rdx.MustHave(data.VangoghProperties()...); err != nil {
+		return err
+	}
+
+	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+
+	if err := originHasFreeSpace(id, downloadsDir, ii, originData, manualUrlFilter...); err != nil {
+		return err
+	}
+
+	dc := dolo.DefaultClient
+
+	if token, ok := rdx.GetLastVal(data.VangoghSessionTokenProperty, data.VangoghSessionTokenProperty); ok && token != "" {
+		dc.SetAuthorizationBearer(token)
+	}
+
+	dls := originData.ProductDetails.DownloadLinks.
+		FilterOperatingSystems(ii.OperatingSystem).
+		FilterLanguageCodes(ii.LangCode).
+		FilterDownloadTypes(ii.DownloadTypes...)
+
+	if len(dls) == 0 {
+		return errors.New("no links are matching operating params")
+	}
+
+	for _, dl := range dls {
+
+		if dl.LocalFilename == "" {
+			return errors.New("unresolved local filename for manual-url " + dl.ManualUrl)
+		}
+
+		if len(manualUrlFilter) > 0 && !slices.Contains(manualUrlFilter, dl.ManualUrl) {
+			continue
+		}
+
+		if dl.ValidationStatus != vangogh_integration.ValidationStatusSuccess &&
+			dl.ValidationStatus != vangogh_integration.ValidationStatusSelfValidated &&
+			dl.ValidationStatus != vangogh_integration.ValidationStatusMissingChecksum {
+			errMsg := fmt.Sprintf("%s validation status %s prevented download", dl.Name, dl.ValidationStatus)
+			return errors.New(errMsg)
+		}
+
+		fa := nod.NewProgress(" - %s...", dl.LocalFilename)
+
+		query := url.Values{
+			"manual-url":    {dl.ManualUrl},
+			"id":            {id},
+			"download-type": {dl.DownloadType.String()},
+		}
+
+		fileUrl, err := data.VangoghUrl(data.HttpFilesPath, query, rdx)
+		if err != nil {
+			fa.EndWithResult(err.Error())
+			continue
+		}
+
+		if err = dc.Download(fileUrl, ii.force, fa, downloadsDir, id, dl.LocalFilename); err != nil {
+			fa.EndWithResult(err.Error())
+			continue
+		}
+
+		fa.Done()
+	}
+
+	return nil
+}
+
+func vangoghGetProtectedLocationsFiles(ii *InstallInfo) ([]string, error) {
+
+	switch ii.OperatingSystem {
+	case vangogh_integration.Linux:
+		return linuxSnapshotDesktopFiles()
+	default:
+		return nil, nil
+	}
+}
+
+func vangoghRemoveProductDownloadLinks(id string,
+	productDetails *vangogh_integration.ProductDetails,
+	ii *InstallInfo,
+	downloadsDir string) error {
+
+	rdla := nod.Begin(" removing downloads for %s...", productDetails.Title)
+	defer rdla.Done()
+
+	idPath := filepath.Join(downloadsDir, id)
+	if _, err := os.Stat(idPath); os.IsNotExist(err) {
+		rdla.EndWithResult("product downloads dir not present")
+		return nil
+	}
+
+	dls := productDetails.DownloadLinks.
+		FilterOperatingSystems(ii.OperatingSystem).
+		FilterLanguageCodes(ii.LangCode).
+		FilterDownloadTypes(ii.DownloadTypes...)
+
+	if len(dls) == 0 {
+		rdla.EndWithResult("no links are matching operating params")
+		return nil
+	}
+
+	for _, dl := range dls {
+
+		// if we don't do this - product downloads dir itself will be removed
+		if dl.LocalFilename == "" {
+			continue
+		}
+
+		path := filepath.Join(downloadsDir, id, dl.LocalFilename)
+
+		fa := nod.NewProgress(" - %s...", dl.LocalFilename)
+
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			fa.EndWithResult("not present")
+			continue
+		}
+
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+
+		fa.Done()
+	}
+
+	productDownloadsDir := filepath.Join(downloadsDir, id)
+	if entries, err := os.ReadDir(productDownloadsDir); err == nil && len(entries) == 0 {
+		rdda := nod.Begin(" removing empty product downloads directory...")
+		if err = os.Remove(productDownloadsDir); err != nil {
+			return err
+		}
+		rdda.Done()
+	} else {
+		return err
+	}
+
+	return nil
+}
+
+func vangoghGetExecTask(id string, ii *InstallInfo, rdx redux.Readable, et *execTask) (*execTask, error) {
+
+	var err error
+	if err = osConfirmRunnability(ii.OperatingSystem); err != nil {
+		return nil, err
+	}
+
+	if ii.OperatingSystem == vangogh_integration.Windows && data.CurrentOs() != vangogh_integration.Windows {
+
+		var absPrefixDir string
+		if absPrefixDir, err = data.AbsPrefixDir(id, ii.Origin, rdx); err == nil {
+			et.prefix = absPrefixDir
+		} else {
+			return nil, err
+		}
+
+		if et.exe != "" {
+			return et, nil
+		}
+	}
+
+	var absGogGameInfoPath string
+	switch et.defaultLauncher {
+	case false:
+		absGogGameInfoPath, err = osFindGogGameInfo(id, ii, rdx)
+		if err != nil {
+			return nil, err
+		}
+	case true:
+		// do nothing
+	}
+
+	switch absGogGameInfoPath {
+	case "":
+		var absDefaultLauncherPath string
+		if absDefaultLauncherPath, err = osFindDefaultLauncher(id, ii, rdx); err != nil {
+			return nil, err
+		}
+		if et, err = osExecTaskDefaultLauncher(absDefaultLauncherPath, ii.OperatingSystem, et); err != nil {
+			return nil, err
+		}
+	default:
+		if et, err = osExecTaskGogGameInfo(absGogGameInfoPath, ii.OperatingSystem, et); err != nil {
+			return nil, err
+		}
+	}
+
+	return et, nil
+}
+
+func vangoghValidateData(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable, manualUrlFilter ...string) error {
+	va := nod.NewProgress("validating downloads...")
+	defer va.Done()
+
+	manualUrlChecksums, err := getManualUrlChecksums(id, rdx, ii.force)
+	if err != nil {
+		return err
+	}
+
+	var mismatchedManualUrls []string
+	if mismatchedManualUrls, err = vangoghValidateLinks(id, ii, manualUrlFilter, originData.ProductDetails, manualUrlChecksums); err != nil {
+		return err
+	} else if len(mismatchedManualUrls) > 0 {
+
+		// redownload and revalidate any manual-urls that resulted in mismatched checksums
+
+		ii.force = true
+
+		if err = Download(id, ii, nil, mismatchedManualUrls...); err != nil {
+			return err
+		}
+
+		if _, err = vangoghValidateLinks(id, ii, manualUrlFilter, originData.ProductDetails, manualUrlChecksums); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func vangoghValidateLinks(id string,
+	ii *InstallInfo,
+	manualUrlFilter []string,
+	productDetails *vangogh_integration.ProductDetails,
+	manualUrlChecksums map[string]string) ([]string, error) {
+
+	vla := nod.NewProgress("validating %s...", productDetails.Title)
+	defer vla.Done()
+
+	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+
+	dls := productDetails.DownloadLinks.
+		FilterOperatingSystems(ii.OperatingSystem).
+		FilterLanguageCodes(ii.LangCode).
+		FilterDownloadTypes(ii.DownloadTypes...)
+
+	if len(dls) == 0 {
+		return nil, errors.New("no links are matching operating params")
+	}
+
+	vla.TotalInt(len(dls))
+
+	results := make([]ValidationResult, 0, len(dls))
+
+	var mismatchedManualUrls []string
+
+	for _, dl := range dls {
+		if len(manualUrlFilter) > 0 && !slices.Contains(manualUrlFilter, dl.ManualUrl) {
+			continue
+		}
+
+		vr, err := vangoghValidateLink(id, &dl, manualUrlChecksums[dl.ManualUrl], downloadsDir)
+		if err != nil {
+			vla.Error(err)
+		}
+
+		if vr == ValResMismatch {
+			mismatchedManualUrls = append(mismatchedManualUrls, dl.ManualUrl)
+		}
+
+		results = append(results, vr)
+	}
+
+	vla.EndWithResult(summarizeValidationResults(results))
+
+	return mismatchedManualUrls, nil
+}
+
+func vangoghValidateLink(id string, link *vangogh_integration.ProductDownloadLink, manualUrlMd5 string, downloadsDir string) (ValidationResult, error) {
+
+	dla := nod.NewProgress(" - %s...", link.LocalFilename)
+	defer dla.Done()
+
+	absDownloadPath := filepath.Join(downloadsDir, id, link.LocalFilename)
+
+	var stat os.FileInfo
+	var err error
+
+	if stat, err = os.Stat(absDownloadPath); os.IsNotExist(err) {
+		dla.EndWithResult(ValResFileNotFound)
+		return ValResFileNotFound, nil
+	}
+
+	if manualUrlMd5 == "" {
+		dla.EndWithResult(ValResMissingChecksum)
+		return ValResMissingChecksum, nil
+	}
+
+	dla.Total(uint64(stat.Size()))
+
+	localFile, err := os.Open(absDownloadPath)
+	if err != nil {
+		return ValResError, err
+	}
+
+	h := md5.New()
+	if err = dolo.CopyWithProgress(h, localFile, dla); err != nil {
+		return ValResError, err
+	}
+
+	computedMd5 := fmt.Sprintf("%x", h.Sum(nil))
+	if manualUrlMd5 == computedMd5 {
+		dla.EndWithResult(ValResValid)
+		return ValResValid, nil
+	} else {
+		dla.EndWithResult(ValResMismatch)
+		return ValResMismatch, nil
+	}
 }

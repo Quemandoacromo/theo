@@ -10,17 +10,18 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/arelate/southern_light/egs_integration"
-	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/steam_grid"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
 	"github.com/boggydigital/coost"
+	"github.com/boggydigital/dolo"
 	"github.com/boggydigital/kevlar"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
@@ -728,59 +729,6 @@ func egsUninstall(appName string, ii *InstallInfo, originData *data.OriginData, 
 	return nil
 }
 
-func egsOtherOriginsShortcutAssets(gamesDbProduct *gog_integration.GamesDbProduct, rdx redux.Writeable) (map[steam_grid.Asset]*url.URL, error) {
-
-	if steamAppId := gamesDbProduct.GetSteamAppId(); steamAppId > 0 {
-
-		sais := strconv.FormatInt(int64(steamAppId), 10)
-
-		appInfo, err := steamGetAppInfoKv(sais, rdx, false)
-		if err != nil {
-			return nil, err
-		}
-
-		return steamShortcutAssets(sais, appInfo)
-	}
-
-	if gogId := gamesDbProduct.GetGogId(); gogId != "" {
-
-		productDetails, err := vangoghGetProductDetails(gogId, rdx, false)
-		if err != nil {
-			return nil, err
-		}
-
-		return vangoghShortcutAssets(productDetails, rdx)
-	}
-
-	productDetails, err := vangogh_integration.ProductDetailsFromGamesDbProduct(gamesDbProduct)
-	if err != nil {
-		return nil, err
-	}
-
-	if productDetails != nil {
-		return gogShortcutAssets(productDetails, rdx)
-	}
-
-	return nil, nil
-}
-
-func egsOtherOriginsLogoPosition(gamesDbProduct *gog_integration.GamesDbProduct, rdx redux.Writeable) (*logoPosition, error) {
-
-	if steamAppId := gamesDbProduct.GetSteamAppId(); steamAppId > 0 {
-
-		sais := strconv.FormatInt(int64(steamAppId), 10)
-
-		appInfo, err := steamGetAppInfoKv(sais, rdx, false)
-		if err != nil {
-			return nil, err
-		}
-
-		return steamLogoPosition(sais, appInfo)
-	}
-
-	return nil, nil
-}
-
 func egsCatalogItemAssets(catalogItem *egs_integration.CatalogItem) (map[steam_grid.Asset]*url.URL, error) {
 
 	shortcutAssets := make(map[steam_grid.Asset]*url.URL)
@@ -1101,4 +1049,182 @@ func egsUninstallDownloadableContent(appName string, ii *InstallInfo, rdx redux.
 	}
 
 	return nil
+}
+
+func egsValidateChunks(appName string, ii *InstallInfo, originData *data.OriginData) error {
+
+	evca := nod.NewProgress("validating EGS chunks for %s-%s...", appName, ii.OperatingSystem)
+	defer evca.Done()
+
+	evca.Total(uint64(egsManifestSize(originData.Manifest)))
+
+	absChunksDownloadsDir := data.AbsChunksDownloadDir(appName, ii.OperatingSystem)
+
+	for _, chunk := range originData.Manifest.ChunkList.Chunks {
+
+		chunkPath := chunk.Path(originData.Manifest.Metadata.FeatureLevel)
+
+		absChunkFilename := filepath.Join(absChunksDownloadsDir, chunkPath)
+
+		chunkFile, err := os.Open(absChunkFilename)
+		if err != nil {
+			return err
+		}
+
+		chunkReader, err := egs_integration.ReadChunk(chunkFile)
+		if err != nil {
+			return err
+		}
+
+		shaSum := sha1.New()
+
+		if _, err = io.Copy(shaSum, chunkReader); err != nil {
+			return err
+		}
+
+		expectedShaSum := fmt.Sprintf("%x", chunk.ShaHash)
+		actualShaSum := fmt.Sprintf("%x", shaSum.Sum(nil))
+
+		if expectedShaSum != actualShaSum {
+			return errors.New("failed validation for " + chunkPath)
+		}
+
+		evca.Progress(chunk.FileSize)
+	}
+
+	evca.EndWithResult("valid")
+
+	return nil
+}
+
+func egsSetupConnection(cookieStr string, reset bool) error {
+
+	egsca := nod.Begin("connecting to EGS...")
+	defer egsca.Done()
+
+	var err error
+
+	if reset {
+		if err = egsResetConnection(); err != nil {
+			return err
+		}
+	}
+
+	if cookieStr != "" {
+		if err = egsGetAccessToken(cookieStr); err != nil {
+			return err
+		}
+	}
+
+	client, err := egsGetClient()
+	if err != nil {
+		return err
+	}
+
+	_, err = egsVerifyToken(client)
+	return err
+}
+
+func egsResetConnection() error {
+
+	egrc := nod.Begin("resetting EGS connection...")
+	defer egrc.Done()
+
+	cookiesDir := data.Pwd.AbsRelDirPath(data.Cookies, data.Metadata)
+	egsCookiePath := filepath.Join(cookiesDir, egsCookiesFilename)
+
+	tokensDir := data.Pwd.AbsRelDirPath(data.Tokens, data.Metadata)
+	kvTokens, err := kevlar.New(tokensDir, kevlar.JsonExt)
+	if err != nil {
+		return err
+	}
+
+	if _, err = os.Stat(egsCookiePath); err == nil {
+		if err = os.Remove(egsCookiePath); err != nil {
+			return nil
+		}
+	}
+
+	if kvTokens.Has(egsTokenKey) {
+		if err = kvTokens.Cut(egsTokenKey); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func egsDownloadChunks(appName string, ii *InstallInfo, originData *data.OriginData) error {
+
+	edca := nod.NewProgress("downloading EGS chunks...")
+	edca.Done()
+
+	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+
+	if err := originHasFreeSpace(appName, downloadsDir, ii, originData); err != nil {
+		return err
+	}
+
+	edca.Total(uint64(egsManifestSize(originData.Manifest)))
+
+	cdnUrls, err := originData.GameManifest.Urls()
+	if err != nil {
+		return err
+	}
+
+	dc := dolo.DefaultClient
+
+	var cdnUrl *url.URL
+	for _, cu := range cdnUrls {
+		cdnUrl = cu
+		break
+	}
+
+	if cdnUrl == nil {
+		return errors.New("downloading EGS chunks requires CDN url")
+	}
+
+	absChunksDownloadsDir := data.AbsChunksDownloadDir(appName, ii.OperatingSystem)
+
+	originalPath := strings.TrimSuffix(cdnUrl.Path, filepath.Base(cdnUrl.Path))
+	cdnUrl.RawQuery = ""
+
+	for _, chunk := range originData.Manifest.ChunkList.Chunks {
+
+		chunkPath := chunk.Path(originData.Manifest.Metadata.FeatureLevel)
+		cdnUrl.Path = path.Join(originalPath, chunkPath)
+
+		if err = dc.Download(cdnUrl, ii.force, nil, absChunksDownloadsDir, chunkPath); err != nil {
+			return err
+		}
+
+		edca.Progress(chunk.FileSize)
+	}
+
+	return nil
+}
+
+func egsGetExecTask(appName string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable, et *execTask) (*execTask, error) {
+
+	installedPath, err := originOsInstalledPath(appName, ii, rdx)
+	if err != nil {
+		return nil, err
+	}
+
+	absPrefixDir, err := data.AbsPrefixDir(appName, ii.Origin, rdx)
+	if err != nil {
+		return nil, err
+	}
+
+	launchDir, launchFile := filepath.Split(originData.Manifest.Metadata.LaunchExe)
+
+	et.title = launchFile
+	et.prefix = absPrefixDir
+	et.exe = filepath.Join(installedPath, originData.Manifest.Metadata.LaunchExe)
+	if originData.Manifest.Metadata.LaunchCommand != "" {
+		et.args = append(et.args, originData.Manifest.Metadata.LaunchCommand)
+	}
+	et.workDir = filepath.Join(installedPath, launchDir)
+
+	return et, nil
 }

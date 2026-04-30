@@ -2,7 +2,6 @@ package cli
 
 import (
 	"errors"
-	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/steam_grid"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
@@ -209,32 +207,13 @@ func originAddSteamShortcut(id, forId string, ii *InstallInfo, originData *data.
 			return nil
 		}
 
-		var gamesDbProduct *gog_integration.GamesDbProduct
-		gamesDbProduct, err = gogGetGamesDbEpic(id, false)
-		if err != nil {
-			return err
-		}
-
-		switch gamesDbProduct {
-		case nil:
-			if originData.CatalogItem != nil {
-				pda, err = egsCatalogItemAssets(originData.CatalogItem)
-				if err != nil {
-					return err
-				}
-
-				lp = defaultLogoPosition()
-			}
-		default:
-			pda, err = egsOtherOriginsShortcutAssets(gamesDbProduct, rdx)
+		if originData.CatalogItem != nil {
+			pda, err = egsCatalogItemAssets(originData.CatalogItem)
 			if err != nil {
 				return err
 			}
 
-			lp, err = egsOtherOriginsLogoPosition(gamesDbProduct, rdx)
-			if err != nil {
-				return err
-			}
+			lp = defaultLogoPosition()
 		}
 
 	default:
@@ -287,127 +266,6 @@ func originPostInstall(id string, ii *InstallInfo, originData *data.OriginData, 
 	return nil
 }
 
-func vangoghUnpackPlace(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
-
-	ipa := nod.Begin("installing %s %s-%s...", id, ii.OperatingSystem, ii.LangCode)
-	defer ipa.Done()
-
-	dls := originData.ProductDetails.DownloadLinks.
-		FilterOperatingSystems(ii.OperatingSystem).
-		FilterLanguageCodes(ii.LangCode).
-		FilterDownloadTypes(ii.DownloadTypes...)
-
-	if len(dls) == 0 {
-		ipa.EndWithResult("no links are matching install params")
-		return nil
-	}
-
-	dlcNames := make(map[string]any)
-
-	for _, dl := range dls {
-		if ii.OperatingSystem != dl.OperatingSystem ||
-			ii.LangCode != dl.LanguageCode {
-			continue
-		}
-		if dl.DownloadType == vangogh_integration.DLC {
-			dlcNames[dl.Name] = nil
-		}
-	}
-
-	if len(dlcNames) > 0 {
-		ii.DownloadableContent = slices.Collect(maps.Keys(dlcNames))
-	}
-
-	// vangogh installation:
-	// 1. check available space
-	// 2. get protected locations files (e.g. Desktop shortcuts on Linux)
-	// 3. unpack installers (e.g. pkgutil on macOS, execute .sh on Linux; run setup on Windows)
-	// 4. perform post-unpack actions (e.g. reduce bundleName on macOS)
-	// 5. uninstall if installed directory exists and forcing install (will be used for updates)
-	// 6. create inventory of unpacked files
-	// 7. place (move unpacked to install folder)
-	// 8. perform post-install actions (e.g. run post-install script and remove xattrs on macOS)
-	// 9. cleanup protected locations
-	// 10. cleanup unpack directory
-
-	// 1
-	installedAppsDir := data.Pwd.AbsDirPath(data.InstalledApps)
-
-	if err := originHasFreeSpace(id, installedAppsDir, ii, originData); err != nil {
-		return err
-	}
-
-	// 2
-	preInstallFiles, err := vangoghGetProtectedLocationsFiles(ii)
-	if err != nil {
-		return err
-	}
-
-	// 3
-	unpackDir, err := vangoghGetUnpackDir(id, ii, rdx)
-	if err != nil {
-		return err
-	}
-
-	if err = vangoghUnpackInstallers(id, ii, dls, rdx, unpackDir); err != nil {
-		return err
-	}
-
-	// 4
-	if err = vangoghPostUnpackActions(id, ii, dls, unpackDir, rdx); err != nil {
-		return err
-	}
-
-	// 5
-	absInstalledDir, err := originOsInstalledPath(id, ii, rdx)
-	if err != nil {
-		return err
-	}
-
-	if _, err = os.Stat(absInstalledDir); err == nil && ii.force {
-		if err = vangoghUninstallProduct(id, ii, rdx); err != nil {
-			return err
-		}
-	}
-
-	// 6
-	unpackedInventory, err := vangoghGetInventory(id, ii, dls, rdx, unpackDir)
-	if err != nil {
-		return err
-	}
-
-	if err = writeInventory(id, ii.LangCode, ii.OperatingSystem, rdx, unpackedInventory...); err != nil {
-		return err
-	}
-
-	// 7
-	if err = vangoghPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir); err != nil {
-		return err
-	}
-
-	// 8
-	if err = vangoghPostInstallActions(id, ii, dls, rdx, unpackDir); err != nil {
-		return err
-	}
-
-	// 9
-	postInstallFiles, err := vangoghGetProtectedLocationsFiles(ii)
-	if err != nil {
-		return err
-	}
-
-	if err = removeNewFiles(preInstallFiles, postInstallFiles); err != nil {
-		return err
-	}
-
-	// 10
-	if err = os.RemoveAll(unpackDir); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func osPreInstallActions(id string, ii *InstallInfo, rdx redux.Readable) error {
 
 	switch ii.OperatingSystem {
@@ -420,165 +278,6 @@ func osPreInstallActions(id string, ii *InstallInfo, rdx redux.Readable) error {
 		default:
 			return nil
 		}
-	default:
-		return nil
-	}
-}
-
-func vangoghGetProtectedLocationsFiles(ii *InstallInfo) ([]string, error) {
-
-	switch ii.OperatingSystem {
-	case vangogh_integration.Linux:
-		return linuxSnapshotDesktopFiles()
-	default:
-		return nil, nil
-	}
-}
-
-func vangoghGetUnpackDir(id string, ii *InstallInfo, rdx redux.Readable) (string, error) {
-
-	unpackDir := filepath.Join(data.Pwd.AbsDirPath(data.Temp), id)
-
-	switch ii.OperatingSystem {
-	case vangogh_integration.Windows:
-		switch data.CurrentOs() {
-		case vangogh_integration.MacOS:
-			fallthrough
-		case vangogh_integration.Linux:
-			absPrefixDir, err := data.AbsPrefixDir(id, ii.Origin, rdx)
-			if err != nil {
-				return "", err
-			}
-			return filepath.Join(absPrefixDir, prefixRelDriveCDir, "Temp", id), nil
-		default:
-			// do nothing
-		}
-	default:
-		// do nothing
-	}
-	return unpackDir, nil
-}
-
-func vangoghUnpackInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Writeable, unpackDir string) error {
-
-	if _, err := os.Stat(unpackDir); err == nil {
-		if ii.force {
-			if err = os.RemoveAll(unpackDir); err != nil {
-				return err
-			}
-		} else {
-			return nil
-		}
-	}
-
-	if _, err := os.Stat(unpackDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(unpackDir, 0755); err != nil {
-			return err
-		}
-	}
-
-	switch ii.OperatingSystem {
-	case vangogh_integration.MacOS:
-		return macOsUnpackInstallers(id, dls, unpackDir, ii.force)
-	case vangogh_integration.Linux:
-		return linuxExecuteInstallers(id, dls, unpackDir)
-	case vangogh_integration.Windows:
-		switch data.CurrentOs() {
-		case vangogh_integration.MacOS:
-			fallthrough
-		case vangogh_integration.Linux:
-			return prefixUnpackInstallers(id, ii, dls, rdx, unpackDir)
-		default:
-			return ii.OperatingSystem.ErrUnsupported()
-		}
-	default:
-		return ii.OperatingSystem.ErrUnsupported()
-	}
-}
-
-func vangoghPostUnpackActions(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, unpackDir string, rdx redux.Writeable) error {
-	switch ii.OperatingSystem {
-	case vangogh_integration.MacOS:
-		return macOsReduceBundleNameProperty(id, dls, unpackDir, rdx)
-	case vangogh_integration.Linux:
-		return linuxRemoveMojoSetupDirs(id, dls, unpackDir)
-	default:
-		return nil
-	}
-}
-
-func vangoghGetInventory(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) ([]string, error) {
-
-	switch ii.OperatingSystem {
-	case vangogh_integration.MacOS:
-		return macOsGetInventory(id, dls, rdx, unpackDir, ii.force)
-	default:
-		return getInventory(ii.OperatingSystem, dls, unpackDir)
-	}
-}
-
-func vangoghPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Writeable, unpackDir string) error {
-	switch ii.OperatingSystem {
-	case vangogh_integration.MacOS:
-		return macOsPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir, ii.force)
-	case vangogh_integration.Linux:
-		return linuxPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir)
-	case vangogh_integration.Windows:
-		switch data.CurrentOs() {
-		case vangogh_integration.MacOS:
-			fallthrough
-		case vangogh_integration.Linux:
-			return prefixPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir)
-		default:
-			return ii.OperatingSystem.ErrUnsupported()
-		}
-	default:
-		return ii.OperatingSystem.ErrUnsupported()
-	}
-}
-
-func vangoghPlaceUnpackedLinkPayload(link *vangogh_integration.ProductDownloadLink, absUnpackedPath, absInstallationPath string) error {
-
-	mpda := nod.Begin(" placing unpacked %s files...", link.LocalFilename)
-	defer mpda.Done()
-
-	if _, err := os.Stat(absInstallationPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(absInstallationPath, 0755); err != nil {
-			return err
-		}
-	}
-
-	// enumerate all files in the payload directory
-	relFiles, err := relWalkDir(absUnpackedPath)
-	if err != nil {
-		return err
-	}
-
-	for _, relFile := range relFiles {
-
-		absSrcPath := filepath.Join(absUnpackedPath, relFile)
-
-		absDstPath := filepath.Join(absInstallationPath, relFile)
-		absDstDir, _ := filepath.Split(absDstPath)
-
-		if _, err = os.Stat(absDstDir); os.IsNotExist(err) {
-			if err = os.MkdirAll(absDstDir, 0755); err != nil {
-				return err
-			}
-		}
-
-		if err = os.Rename(absSrcPath, absDstPath); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func vangoghPostInstallActions(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
-	switch ii.OperatingSystem {
-	case vangogh_integration.MacOS:
-		return macOsPostInstallActions(id, ii, dls, rdx, unpackDir, ii.force)
 	default:
 		return nil
 	}
@@ -657,52 +356,4 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 	default:
 		return "", ii.Origin.ErrUnsupportedOrigin()
 	}
-}
-
-func vangoghShortcutAssets(productDetails *vangogh_integration.ProductDetails, rdx redux.Readable) (map[steam_grid.Asset]*url.URL, error) {
-
-	shortcutAssets := make(map[steam_grid.Asset]*url.URL)
-
-	for _, asset := range steam_grid.ShortcutAssets {
-
-		var imageId string
-		switch asset {
-		case steam_grid.Header:
-			imageId = productDetails.Images.Image
-		case steam_grid.LibraryCapsule:
-			imageId = productDetails.Images.VerticalImage
-		case steam_grid.LibraryHero:
-			if productDetails.Images.Hero != "" {
-				imageId = productDetails.Images.Hero
-			} else {
-				imageId = productDetails.Images.Background
-			}
-		case steam_grid.LibraryLogo:
-			imageId = productDetails.Images.Logo
-		case steam_grid.ClientIcon:
-			if productDetails.Images.IconSquare != "" {
-				imageId = productDetails.Images.IconSquare
-			} else {
-				imageId = productDetails.Images.Icon
-			}
-		default:
-			return nil, errors.New("unexpected shortcut asset " + asset.String())
-		}
-
-		if imageId != "" {
-			imageQuery := url.Values{
-				"id": {imageId},
-			}
-
-			vangoghImageUrl, err := data.VangoghUrl(data.HttpImagePath, imageQuery, rdx)
-			if err != nil {
-				return nil, err
-			}
-
-			shortcutAssets[asset] = vangoghImageUrl
-		}
-	}
-
-	return shortcutAssets, nil
-
 }

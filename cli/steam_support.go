@@ -4,12 +4,14 @@ import (
 	"errors"
 	"net/url"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/arelate/southern_light/steam_grid"
+	"github.com/arelate/southern_light/steam_integration"
 	"github.com/arelate/southern_light/steam_vdf"
 	"github.com/arelate/southern_light/steamcmd"
 	"github.com/arelate/southern_light/vangogh_integration"
@@ -380,4 +382,262 @@ func steamAppInfoSize(steamAppId string, operatingSystem vangogh_integration.Ope
 	}
 
 	return estimatedBytes, nil
+}
+
+func steamSetupConnection(username string, rdx redux.Writeable, reset bool) error {
+
+	ssca := nod.Begin("connecting to Steam...")
+	defer ssca.Done()
+
+	if err := rdx.MustHave(data.SteamProperties()...); err != nil {
+		return err
+	}
+
+	if reset {
+		if err := steamResetConnection(rdx); err != nil {
+			return err
+		}
+	}
+
+	switch username {
+	case "":
+		if un, ok := rdx.GetLastVal(data.SteamUsernameProperty, data.SteamUsernameProperty); ok && un != "" {
+			username = un
+		} else {
+			return errors.New("please provide Steam username")
+		}
+	default:
+		if err := rdx.ReplaceValues(data.SteamUsernameProperty, data.SteamUsernameProperty, username); err != nil {
+			return err
+		}
+	}
+
+	absSteamCmdPath, err := data.AbsSteamCmdBinPath(data.CurrentOs())
+	if err != nil {
+		return err
+	}
+
+	return steamcmd.Login(absSteamCmdPath, username)
+}
+
+func steamResetConnection(rdx redux.Writeable) error {
+	rsca := nod.Begin("resetting Steam connection...")
+	defer rsca.Done()
+
+	if err := rdx.CutKeys(data.SteamUsernameProperty, data.SteamUsernameProperty); err != nil {
+		return err
+	}
+
+	absSteamCmdPath, err := data.AbsSteamCmdBinPath(data.CurrentOs())
+	if err != nil {
+		return err
+	}
+
+	return steamcmd.Logout(absSteamCmdPath)
+}
+
+func steamDownloadData(steamAppId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable) error {
+	steamAppsDir := data.Pwd.AbsDirPath(data.SteamApps)
+
+	if err := originHasFreeSpace(steamAppId, steamAppsDir, ii, originData); err != nil {
+		return err
+	}
+
+	return steamUpdateApp(steamAppId, ii.OperatingSystem, rdx)
+}
+
+func steamGetExecTask(steamAppId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable, et *execTask) (*execTask, error) {
+
+	var err error
+
+	switch et.task {
+	case "":
+		et, err = steamDefaultTask(steamAppId, originData.AppInfoKv, ii, rdx)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		et, err = steamNamedTask(steamAppId, et.task, originData.AppInfoKv, ii, rdx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return et, nil
+}
+
+func steamGetLaunchConfigs(steamAppId string, appInfoKv steam_vdf.ValveDataFile) ([]*steam_integration.LaunchConfig, error) {
+
+	appInfoClKv, err := appInfoKv.At(steamAppId, "config", "launch")
+	if err != nil {
+		return nil, err
+	}
+
+	launchConfigs := make([]*steam_integration.LaunchConfig, 0, len(appInfoClKv.Values))
+
+	for _, lcKv := range appInfoClKv.Values {
+
+		lc := new(steam_integration.LaunchConfig)
+
+		if lcExe, ok := lcKv.Values.Val("executable"); ok {
+			lc.Executable = lcExe
+		}
+
+		if lcArgs, ok := lcKv.Values.Val("arguments"); ok {
+			lc.Arguments = lcArgs
+		}
+
+		if lcWd, ok := lcKv.Values.Val("workingdir"); ok {
+			lc.WorkingDir = lcWd
+		}
+
+		if lcDesc, ok := lcKv.Values.Val("description"); ok && lcDesc != "" {
+			lc.Description = lcDesc
+		}
+
+		if lcType, ok := lcKv.Values.Val("type"); ok {
+			lc.Type = lcType
+		}
+
+		if lol, ok := lcKv.Values.Val("config", "oslist"); ok {
+			lc.OsList = lol
+		}
+
+		if loa, ok := lcKv.Values.Val("config", "osarch"); ok {
+			lc.OsArch = loa
+		}
+
+		if lbk, ok := lcKv.Values.Val("config", "BetaKey"); ok {
+			lc.BetaKey = lbk
+		}
+
+		launchConfigs = append(launchConfigs, lc)
+	}
+
+	return launchConfigs, nil
+}
+
+func steamDefaultTask(steamAppId string, appInfoKv steam_vdf.ValveDataFile, ii *InstallInfo, rdx redux.Readable) (*execTask, error) {
+
+	steamLaunchConfigs, err := steamGetLaunchConfigs(steamAppId, appInfoKv)
+	if err != nil {
+		return nil, err
+	}
+
+	steamAppInstallDir, err := data.AbsSteamAppInstallDir(steamAppId, ii.OperatingSystem, rdx)
+	if err != nil {
+		return nil, err
+	}
+
+	absPrefixDir, err := data.AbsPrefixDir(steamAppId, ii.Origin, rdx)
+	if err != nil {
+		return nil, err
+	}
+
+	var appInfoName string
+	if ain, ok := appInfoKv.Val(steamAppId, "common", "name"); ok {
+		appInfoName = ain
+	}
+
+	et := new(execTask)
+
+	for _, slc := range steamLaunchConfigs {
+
+		var lcOperatingSystem vangogh_integration.OperatingSystem
+
+		if slc.OsList != "" {
+			osList := vangogh_integration.ParseManyOperatingSystems(strings.Split(slc.OsList, ","))
+			switch len(osList) {
+			case 0:
+				lcOperatingSystem = vangogh_integration.Windows
+			case 1:
+				lcOperatingSystem = osList[0]
+			default:
+				return nil, errors.New("more than one steam launch config found for " + steamAppId)
+			}
+		} else {
+			lcOperatingSystem = vangogh_integration.Windows
+		}
+
+		if lcOperatingSystem != ii.OperatingSystem ||
+			slc.Executable == "" ||
+			slc.OsArch == "32" {
+			continue
+		}
+
+		et.exe = filepath.Join(steamAppInstallDir, windowsToNixPath(slc.Executable))
+		et.workDir = filepath.Join(steamAppInstallDir, windowsToNixPath(slc.WorkingDir))
+		et.prefix = absPrefixDir
+		et.title = slc.Description
+		if et.title == "" {
+			et.title = appInfoName
+		}
+
+		return et, nil
+	}
+
+	return nil, errors.New("cannot determine default steam launch config for " + steamAppId)
+}
+
+func steamNamedTask(steamAppId, task string, appInfoKv steam_vdf.ValveDataFile, ii *InstallInfo, rdx redux.Readable) (*execTask, error) {
+
+	steamLaunchConfigs, err := steamGetLaunchConfigs(steamAppId, appInfoKv)
+	if err != nil {
+		return nil, err
+	}
+
+	steamAppInstallDir, err := data.AbsSteamAppInstallDir(steamAppId, ii.OperatingSystem, rdx)
+	if err != nil {
+		return nil, err
+	}
+
+	absPrefixDir, err := data.AbsPrefixDir(steamAppId, ii.Origin, rdx)
+	if err != nil {
+		return nil, err
+	}
+
+	var appInfoName string
+	if ain, ok := appInfoKv.Val(steamAppId, "common", "name"); ok {
+		appInfoName = ain
+	}
+
+	et := new(execTask)
+
+	for _, slc := range steamLaunchConfigs {
+
+		var lcOperatingSystem vangogh_integration.OperatingSystem
+
+		if slc.OsList != "" {
+			osList := vangogh_integration.ParseManyOperatingSystems(strings.Split(slc.OsList, ","))
+			switch len(osList) {
+			case 0:
+				lcOperatingSystem = vangogh_integration.Windows
+			case 1:
+				lcOperatingSystem = osList[0]
+			default:
+				return nil, errors.New("more than one steam launch config found for " + steamAppId)
+			}
+		} else {
+			lcOperatingSystem = vangogh_integration.Windows
+		}
+
+		if lcOperatingSystem != ii.OperatingSystem ||
+			slc.Executable == "" ||
+			slc.OsArch == "32" ||
+			slc.Description != task {
+			continue
+		}
+
+		et.exe = filepath.Join(steamAppInstallDir, windowsToNixPath(slc.Executable))
+		et.workDir = filepath.Join(steamAppInstallDir, windowsToNixPath(slc.WorkingDir))
+		et.prefix = absPrefixDir
+		et.title = slc.Description
+		if et.title == "" {
+			et.title = appInfoName
+		}
+
+		return et, nil
+	}
+
+	return nil, errors.New("named steam launch config not found for " + steamAppId)
 }
