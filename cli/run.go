@@ -460,8 +460,8 @@ func osApplyLaunchOptions(id string, ii *InstallInfo, et *execTask, rdx redux.Re
 		et.args = append(et.args, args)
 	}
 
-	if env, ok := rdx.GetLastVal(data.LaunchOptionsEnvProperty, appOsLangCode); ok && len(env) > 0 {
-		et.env = append(et.env, env)
+	if env, ok := rdx.GetAllValues(data.LaunchOptionsEnvProperty, appOsLangCode); ok && len(env) > 0 {
+		et.env = append(et.env, env...)
 	}
 
 	return nil

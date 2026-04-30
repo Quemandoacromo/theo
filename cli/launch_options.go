@@ -81,7 +81,7 @@ func LaunchOptions(id string, request *InstallInfo, et *execTask, reset bool) er
 			return err
 		}
 
-		if err = rdx.ReplaceValues(data.LaunchOptionsEnvProperty, appOsLangCode, osEnvDefaults[ii.OperatingSystem]...); err != nil {
+		if err = rdx.ReplaceValues(data.LaunchOptionsEnvProperty, appOsLangCode, osEnvDefaults[data.CurrentOs()]...); err != nil {
 			return err
 		}
 	}
