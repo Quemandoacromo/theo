@@ -15,9 +15,12 @@ import (
 var osEnvDefaults = map[vangogh_integration.OperatingSystem][]string{
 	vangogh_integration.MacOS: {
 		"CX_GRAPHICS_BACKEND=d3dmetal", // other values: dxmt, dxvk, wined3d
+		"WINED3DMETAL=1",
 		"WINEMSYNC=1",
 		"WINEESYNC=0",
 		"ROSETTA_ADVERTISE_AVX=1",
+		"D3DM_ENABLE_METALFX=1",
+		"DXMT_ENABLE_NVEXT=1",
 		// "MTL_HUD_ENABLED=1", // not a candidate for default value, adding for reference
 	},
 }

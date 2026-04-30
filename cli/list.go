@@ -510,6 +510,10 @@ func listSteamAppInfoTasks(steamAppId string, rdx redux.Writeable, force bool) (
 	return steamLaunchConfigTasks, nil
 }
 
+func listEpicGamesTasks(appName string) (map[string][]string, error) {
+	return nil, nil
+}
+
 func listSteamShortcuts(allShortcutKeys bool) error {
 	lssa := nod.Begin("listing Steam shortcuts for all users...")
 	defer lssa.Done()
