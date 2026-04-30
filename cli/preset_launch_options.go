@@ -72,6 +72,9 @@ func PresetLaunchOptions(id string, request *InstallInfo, rdx redux.Writeable) e
 	case "2efe99166b8847e9bcd80c571b05e1b6":
 		// Horizon Forbidden West™ Complete Edition
 		return presetEpicPortalArg(id, ii)
+	case "27ada626582e4d24b7686091b37675f4":
+		// Pacific Drive
+		return presetEpicPortalArg(id, ii)
 	case "Kiwi":
 		// Tetris® Effect: Connected
 		return presetEpicPortalArg(id, ii)
