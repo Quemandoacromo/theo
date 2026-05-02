@@ -242,6 +242,10 @@ func vangoghFetchAvailableProducts(kvAvailableProducts kevlar.KeyValues) error {
 		return err
 	}
 
+	if err = vangoghValidateSessionToken(rdx); err != nil {
+		return err
+	}
+
 	req, err := data.VangoghRequest(http.MethodGet, data.ApiAvailableProducts, nil, rdx)
 	if err != nil {
 		return err
@@ -252,6 +256,10 @@ func vangoghFetchAvailableProducts(kvAvailableProducts kevlar.KeyValues) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return errors.New("error fetching available products: " + resp.Status)
+	}
 
 	vangoghApKey := originAvailableProductsKey(data.VangoghOrigin, vangogh_integration.AnyOperatingSystem)
 
