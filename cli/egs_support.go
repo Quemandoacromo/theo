@@ -35,6 +35,22 @@ const (
 var egsClient *http.Client
 var egsTokenVerifiedRecently bool
 
+var (
+	eosOverlayGameAsset = egs_integration.GameAsset{
+		AppName:       "98bc04bc842e4906993fd6d6644ffb8d",
+		LabelName:     "Epic Online Services Overlay",
+		CatalogItemId: "cc15684f44d849e89e9bf4cec0508b68",
+		Namespace:     "302e5ede476149b1bc3e4fe6ae45e50e",
+	}
+
+	eosHelperGameAsset = egs_integration.GameAsset{
+		AppName:       "c9e2eb9993a1496c99dc529b49a07339",
+		LabelName:     "Epic Online Services Helper",
+		Namespace:     "302e5ede476149b1bc3e4fe6ae45e50e",
+		CatalogItemId: "1108a9c0af47438da91331753b22ea21",
+	}
+)
+
 func egsGetClient() (*http.Client, error) {
 
 	if egsClient == nil {
@@ -462,6 +478,15 @@ func egsGetGameAsset(appName string, ii *InstallInfo) (*egs_integration.GameAsse
 
 	egga := nod.Begin("getting EGS game asset...")
 	defer egga.Done()
+
+	switch appName {
+	case eosOverlayGameAsset.AppName:
+		return &eosOverlayGameAsset, nil
+	case eosHelperGameAsset.AppName:
+		return &eosHelperGameAsset, nil
+	default:
+		// proceed normally
+	}
 
 	osGameAssets, err := egsGetGameAssets(ii.force)
 	if err != nil {
