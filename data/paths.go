@@ -58,7 +58,6 @@ const (
 	SteamApps
 	EgsApps
 	UmuConfigs
-	PrefixArchive
 	BinDownloads
 	BinUnpacks
 	GogPrefixes
@@ -83,7 +82,6 @@ var relDirNames = map[camino.RelDir]string{
 	GogApps:            "gog-apps",
 	SteamApps:          "steam-apps",
 	EgsApps:            "egs-apps",
-	PrefixArchive:      "_prefix-archive",
 	BinDownloads:       "_downloads",
 	BinUnpacks:         "_binaries",
 	GogPrefixes:        "gog-prefixes",
@@ -110,7 +108,6 @@ var relAbsParents = map[camino.RelDir][]camino.AbsDir{
 	SteamApps:          {InstalledApps},
 	EgsApps:            {InstalledApps},
 	UmuConfigs:         {InstalledApps},
-	PrefixArchive:      {Backups},
 	BinDownloads:       {Wine, SteamCmd},
 	BinUnpacks:         {Wine, SteamCmd},
 	GogPrefixes:        {Prefixes},
