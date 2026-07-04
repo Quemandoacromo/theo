@@ -3,12 +3,11 @@ package data
 const (
 	ApiAuthUserPath           = "/api/auth-user"
 	ApiAuthSessionPath        = "/api/auth-session"
-	ApiAvailableProducts      = "/api/available-products"
+	ApiAvailableProductsPath  = "/api/available-products"
 	ApiProductDetailsPath     = "/api/product-details"
-	ApiManualUrlChecksums     = "/api/manual-url-checksums"
-	ApiWineBinariesVersions   = "/api/wine-binaries-versions"
-	ApiFilePath               = "/api/file"
-	ApiWineBinaryFilePath     = "/api/wine-binary-file"
-	ApiSteamCmdBinaryFilePath = "/api/steamcmd-binary-file"
+	ApiManualUrlChecksumsPath = "/api/manual-url-checksums"
+	ApiBinariesVersionsPath   = "/api/binaries/versions"
+	ApiGogManualUrlPath       = "/api/gog-manual-url"
+	ApiBinaryPath             = "/api/binary"
 	ApiImagePath              = "/api/image"
 )

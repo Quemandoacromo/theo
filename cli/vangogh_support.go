@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"time"
@@ -247,7 +248,7 @@ func vangoghFetchAvailableProducts(kvAvailableProducts kevlar.KeyValues) error {
 		return err
 	}
 
-	req, err := data.VangoghApiRequest(http.MethodGet, data.ApiAvailableProducts, nil, rdx)
+	req, err := data.VangoghApiRequest(http.MethodGet, data.ApiAvailableProductsPath, nil, rdx)
 	if err != nil {
 		return err
 	}
@@ -333,11 +334,9 @@ func vangoghShortcutAssets(productDetails *vangogh_integration.ProductDetails, r
 		}
 
 		if imageId != "" {
-			imageQuery := url.Values{
-				vangogh_integration.UrlIdParameter: {imageId},
-			}
 
-			vangoghImageUrl, err := data.VangoghUrl(data.ApiImagePath, imageQuery, rdx)
+			apiImagePath := path.Join(data.ApiImagePath, imageId)
+			vangoghImageUrl, err := data.VangoghUrl(apiImagePath, nil, rdx)
 			if err != nil {
 				return nil, err
 			}
@@ -795,13 +794,9 @@ func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData
 
 		fa := nod.NewProgress(" - %s...", dl.LocalFilename)
 
-		query := url.Values{
-			vangogh_integration.UrlManualUrlParameter:    {dl.ManualUrl},
-			vangogh_integration.UrlIdParameter:           {id},
-			vangogh_integration.UrlDownloadTypeParameter: {dl.DownloadType.String()},
-		}
+		manualUrlPath := path.Join(data.ApiGogManualUrlPath, id, dl.DownloadType.String(), dl.ManualUrl)
 
-		fileUrl, err := data.VangoghUrl(data.ApiFilePath, query, rdx)
+		fileUrl, err := data.VangoghUrl(manualUrlPath, nil, rdx)
 		if err != nil {
 			fa.EndWithResult(err.Error())
 			continue

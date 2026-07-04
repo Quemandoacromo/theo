@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -98,7 +99,7 @@ func getWineBinariesVersions(rdx redux.Readable) ([]vangogh_integration.WineBina
 		return nil, err
 	}
 
-	req, err := data.VangoghApiRequest(http.MethodGet, data.ApiWineBinariesVersions, nil, rdx)
+	req, err := data.VangoghApiRequest(http.MethodGet, data.ApiBinariesVersionsPath, nil, rdx)
 	if err != nil {
 		return nil, err
 	}
@@ -162,12 +163,9 @@ func downloadWineBinary(binary *vangogh_integration.WineBinaryDetails, rdx redux
 		return nil
 	}
 
-	query := url.Values{
-		vangogh_integration.UrlTitleParameter:           {binary.Title},
-		vangogh_integration.UrlOperatingSystemParameter: {binary.OS.String()},
-	}
+	apiBinaryPath := path.Join(data.ApiBinaryPath, binary.OS.String(), binary.Title)
 
-	wineBinaryUrl, err := data.VangoghUrl(data.ApiWineBinaryFilePath, query, rdx)
+	wineBinaryUrl, err := data.VangoghUrl(apiBinaryPath, nil, rdx)
 	if err != nil {
 		return err
 	}

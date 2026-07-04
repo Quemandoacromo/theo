@@ -3,6 +3,7 @@ package cli
 import (
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/arelate/southern_light/steamcmd"
@@ -57,11 +58,9 @@ func downloadSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSyste
 
 	steamCmdDownloads := camino.GetRel(data.BinDownloads, data.SteamCmd)
 
-	query := url.Values{
-		vangogh_integration.UrlOperatingSystemParameter: {operatingSystem.String()},
-	}
+	apiBinarySteamCmdPath := path.Join(data.ApiBinaryPath, operatingSystem.String(), steamcmd.Title)
 
-	steamCmdBinaryUrl, err := data.VangoghUrl(data.ApiSteamCmdBinaryFilePath, query, rdx)
+	steamCmdBinaryUrl, err := data.VangoghUrl(apiBinarySteamCmdPath, nil, rdx)
 	if err != nil {
 		return err
 	}
