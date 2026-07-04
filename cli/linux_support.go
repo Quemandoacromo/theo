@@ -69,9 +69,7 @@ func linuxExtractInstallerData(linkInstallerPath, absUnpackDir string) error {
 
 func linuxUnpackWindowsInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
 
-	absInnoextractBinaryPath, err := data.InnoextractLatestReleasePath(innoextractBinaryFn, rdx)
-
-	if err == nil && absInnoextractBinaryPath != "" {
+	if absInnoextractBinaryPath, err := data.InnoextractLatestReleasePath(innoextractBinaryFn, rdx); err == nil && absInnoextractBinaryPath != "" {
 		return linuxInnoextractInstallers(id, ii, dls, unpackDir, absInnoextractBinaryPath)
 	} else {
 		return prefixRunInstallers(id, ii, dls, rdx, unpackDir)
