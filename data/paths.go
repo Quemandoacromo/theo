@@ -46,9 +46,6 @@ const (
 	ManualUrlChecksums
 	SteamAppInfo
 	Temp
-	GogApps
-	SteamApps
-	EgsApps
 	Cookies
 	Tokens
 	AvailableProducts
@@ -57,13 +54,16 @@ const (
 	GameManifests
 	Manifests
 	Inventory
+	GogApps
+	SteamApps
+	EgsApps
+	UmuConfigs
 	PrefixArchive
 	BinDownloads
 	BinUnpacks
 	GogPrefixes
 	SteamPrefixes
 	EgsPrefixes
-	UmuConfigs
 )
 
 var relDirNames = map[camino.RelDir]string{
@@ -109,10 +109,10 @@ var relAbsParents = map[camino.RelDir][]camino.AbsDir{
 	GogApps:            {InstalledApps},
 	SteamApps:          {InstalledApps},
 	EgsApps:            {InstalledApps},
+	UmuConfigs:         {InstalledApps},
 	PrefixArchive:      {Backups},
 	BinDownloads:       {Wine, SteamCmd},
 	BinUnpacks:         {Wine, SteamCmd},
-	UmuConfigs:         {Wine},
 	GogPrefixes:        {Prefixes},
 	SteamPrefixes:      {Prefixes},
 	EgsPrefixes:        {Prefixes},

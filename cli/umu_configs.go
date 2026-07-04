@@ -42,7 +42,7 @@ func getLatestUmuConfigsDir(rdx redux.Readable) (string, error) {
 		return "", errors.New("umu-launcher version not found, please run setup-wine")
 	}
 
-	umuConfigsDir := camino.GetRel(data.UmuConfigs, data.Wine)
+	umuConfigsDir := camino.GetRel(data.UmuConfigs, data.InstalledApps)
 	latestUmuConfigsDir := filepath.Join(umuConfigsDir, latestUmuLauncherVersion)
 
 	return latestUmuConfigsDir, nil
