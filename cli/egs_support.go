@@ -981,7 +981,7 @@ func egsManifestSize(manifest *egs_integration.Manifest) int64 {
 
 func egsAssembleValidateChunks(appName string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable) error {
 
-	egsAppsDir := camino.GetAbs(data.EgsApps)
+	egsAppsDir := camino.GetRel(data.EgsApps, data.InstalledApps)
 
 	if err := originHasFreeSpace(appName, egsAppsDir, ii, originData); err != nil {
 		return err

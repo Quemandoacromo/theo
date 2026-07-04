@@ -24,8 +24,6 @@ const (
 	Logs
 	Metadata
 	InstalledApps
-	SteamApps
-	EgsApps
 	Wine
 	SteamCmd
 	Temp
@@ -37,8 +35,6 @@ var absDirNames = map[camino.AbsDir]string{
 	Logs:          "logs",
 	Metadata:      "metadata",
 	InstalledApps: "installed-apps",
-	SteamApps:     "steam-apps",
-	EgsApps:       "egs-apps",
 	Wine:          "wine",
 	SteamCmd:      "steamcmd",
 	Temp:          "_temp",
@@ -49,6 +45,9 @@ const (
 	ProductDetails
 	ManualUrlChecksums
 	SteamAppInfo
+	GogApps
+	SteamApps
+	EgsApps
 	Cookies
 	Tokens
 	AvailableProducts
@@ -71,6 +70,9 @@ var relDirNames = map[camino.RelDir]string{
 	ProductDetails:     "product-details",
 	ManualUrlChecksums: "manual-url-checksums",
 	SteamAppInfo:       "steam-appinfo",
+	GogApps:            "gog-apps",
+	SteamApps:          "steam-apps",
+	EgsApps:            "egs-apps",
 	Cookies:            "_cookies",
 	Tokens:             "_tokens",
 	AvailableProducts:  "available-products",
@@ -93,6 +95,9 @@ var relAbsParents = map[camino.RelDir][]camino.AbsDir{
 	ProductDetails:     {Metadata},
 	ManualUrlChecksums: {Metadata},
 	SteamAppInfo:       {Metadata},
+	GogApps:            {InstalledApps},
+	SteamApps:          {InstalledApps},
+	EgsApps:            {InstalledApps},
 	Cookies:            {Metadata},
 	Tokens:             {Metadata},
 	AvailableProducts:  {Metadata},
@@ -228,7 +233,7 @@ func AbsSteamAppInstallDir(steamAppId string, operatingSystem vangogh_integratio
 		return "", errors.New("Steam app name not found for " + steamAppId)
 	}
 
-	steamAppsDir := camino.GetAbs(SteamApps)
+	steamAppsDir := camino.GetRel(SteamApps, InstalledApps)
 
 	return filepath.Join(steamAppsDir, operatingSystem.String(), camino.Sanitize(steamAppName)), nil
 }

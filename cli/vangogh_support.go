@@ -531,7 +531,7 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 	// 8. cleanup unpack directory
 
 	// 1
-	installedAppsDir := camino.GetAbs(data.InstalledApps)
+	installedAppsDir := camino.GetRel(data.GogApps, data.InstalledApps)
 
 	if err := originHasFreeSpace(id, installedAppsDir, ii, originData); err != nil {
 		return err

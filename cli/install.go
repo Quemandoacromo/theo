@@ -310,7 +310,7 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 			return "", err
 		}
 
-		installedAppsDir := camino.GetAbs(data.InstalledApps)
+		installedAppsDir := camino.GetRel(data.GogApps, data.InstalledApps)
 
 		osLangInstalledAppsDir := filepath.Join(installedAppsDir, data.OsLangCode(ii.OperatingSystem, ii.LangCode))
 
@@ -338,7 +338,7 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 			return "", err
 		}
 	case data.EpicGamesOrigin:
-		egsAppsDir := camino.GetAbs(data.EgsApps)
+		egsAppsDir := camino.GetRel(data.EgsApps, data.InstalledApps)
 
 		osEgsAppsDir := filepath.Join(egsAppsDir, ii.OperatingSystem.String())
 

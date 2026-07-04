@@ -442,7 +442,7 @@ func steamResetConnection(rdx redux.Writeable) error {
 }
 
 func steamDownloadData(steamAppId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable) error {
-	steamAppsDir := camino.GetAbs(data.SteamApps)
+	steamAppsDir := camino.GetRel(data.SteamApps, data.InstalledApps)
 
 	if err := originHasFreeSpace(steamAppId, steamAppsDir, ii, originData); err != nil {
 		return err
