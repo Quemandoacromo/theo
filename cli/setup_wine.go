@@ -156,7 +156,7 @@ func downloadWineBinary(binary *vangogh_integration.WineBinaryDetails, rdx redux
 		return err
 	}
 
-	wineDownloads := camino.GetRel(data.BinDownloads, data.Wine)
+	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
 
 	if currentVersion, ok := rdx.GetLastVal(data.WineBinariesVersionsProperty, binary.Title); ok && binary.Version == currentVersion && !force {
 		dwba.EndWithResult("latest version already available")
@@ -176,7 +176,7 @@ func downloadWineBinary(binary *vangogh_integration.WineBinaryDetails, rdx redux
 		dc.SetAuthorizationBearer(token)
 	}
 
-	return dc.Download(wineBinaryUrl, force, dwba, wineDownloads, binary.Filename)
+	return dc.Download(wineBinaryUrl, force, dwba, binariesReleasesDir, binary.Filename)
 }
 
 func validateWineBinaries(wbd []vangogh_integration.WineBinaryDetails, operatingSystem vangogh_integration.OperatingSystem, since time.Time, force bool) error {
@@ -184,14 +184,14 @@ func validateWineBinaries(wbd []vangogh_integration.WineBinaryDetails, operating
 	vwba := nod.NewProgress("validating WINE binaries...")
 	defer vwba.Done()
 
-	wineDownloads := camino.GetRel(data.BinDownloads, data.Wine)
+	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
 
 	for _, wineBinary := range wbd {
 		if wineBinary.OS != operatingSystem && wineBinary.OS != vangogh_integration.Windows {
 			continue
 		}
 
-		if err := wine_integration.ValidateWineBinary(&wineBinary, wineDownloads, since, force); err != nil {
+		if err := wine_integration.ValidateWineBinary(&wineBinary, binariesReleasesDir, since, force); err != nil {
 			return err
 		}
 	}
@@ -230,9 +230,9 @@ func cleanupDownloadedWineBinaries(wbd []vangogh_integration.WineBinaryDetails, 
 		expectedFiles = append(expectedFiles, wineBinary.Filename)
 	}
 
-	wineDownloads := camino.GetRel(data.BinDownloads, data.Wine)
+	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
 
-	wineDownloadsDir, err := os.Open(wineDownloads)
+	wineDownloadsDir, err := os.Open(binariesReleasesDir)
 	if err != nil {
 		return err
 	}
@@ -263,7 +263,7 @@ func cleanupDownloadedWineBinaries(wbd []vangogh_integration.WineBinaryDetails, 
 	cdwba.TotalInt(len(unexpectedFiles))
 
 	for _, uf := range unexpectedFiles {
-		absUnexpectedFile := filepath.Join(wineDownloads, uf)
+		absUnexpectedFile := filepath.Join(binariesReleasesDir, uf)
 		if err = os.Remove(absUnexpectedFile); err != nil {
 			return err
 		}
@@ -280,16 +280,16 @@ func unpackWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 	uwba := nod.Begin("unpacking WINE binaries...")
 	defer uwba.Done()
 
-	wineDownloads := camino.GetRel(data.BinDownloads, data.Wine)
-	wineBinaries := camino.GetRel(data.BinUnpacks, data.Wine)
+	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
+	binariesRuntimesDir := camino.GetRel(data.Runtimes, data.Binaries)
 
 	for _, wineBinary := range wbd {
 		if wineBinary.OS != operatingSystem {
 			continue
 		}
 
-		srcPath := filepath.Join(wineDownloads, wineBinary.Filename)
-		dstPath := filepath.Join(wineBinaries, camino.Sanitize(wineBinary.Title), wineBinary.Version)
+		srcPath := filepath.Join(binariesReleasesDir, wineBinary.Filename)
+		dstPath := filepath.Join(binariesRuntimesDir, camino.Sanitize(wineBinary.Title), wineBinary.Version)
 
 		if _, err := os.Stat(dstPath); err == nil && !force {
 			continue
@@ -344,7 +344,7 @@ func cleanupUnpackedWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 	cuwba := nod.NewProgress("cleaning up unpacked WINE binaries...")
 	defer cuwba.Done()
 
-	wineBinaries := camino.GetRel(data.BinUnpacks, data.Wine)
+	runtimesDir := camino.GetRel(data.Runtimes, data.Binaries)
 
 	absExpectedDirs := make([]string, 0)
 	absActualDirs := make([]string, 0)
@@ -354,7 +354,7 @@ func cleanupUnpackedWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 			continue
 		}
 
-		absTitleDir := filepath.Join(wineBinaries, camino.Sanitize(wineBinary.Title))
+		absTitleDir := filepath.Join(runtimesDir, camino.Sanitize(wineBinary.Title))
 
 		absLatestVersionDir := filepath.Join(absTitleDir, wineBinary.Version)
 		absExpectedDirs = append(absExpectedDirs, absLatestVersionDir)

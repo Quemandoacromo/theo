@@ -45,7 +45,7 @@ func githubLatestReleasePath(relBinPath string, repo string, rdx redux.Readable)
 		return "", errors.New(repo + " latest version not found, please run setup-wine")
 	}
 
-	absBinPath := filepath.Join(camino.GetRel(BinUnpacks, Wine), camino.Sanitize(repo), latestRelease)
+	absBinPath := filepath.Join(camino.GetRel(Releases, Binaries), camino.Sanitize(repo), latestRelease)
 	if relBinPath != "" {
 		absBinPath = filepath.Join(absBinPath, relBinPath)
 	}

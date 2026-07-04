@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/arelate/southern_light/steamcmd"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/boggydigital/camino"
 	"github.com/boggydigital/redux"
@@ -20,24 +21,26 @@ const (
 
 const (
 	Backups camino.AbsDir = iota
+	Binaries
 	Downloads
 	Logs
 	Metadata
 	InstalledApps
 	Prefixes
-	Wine
-	SteamCmd
+	//Wine
+	//SteamCmd
 )
 
 var absDirNames = map[camino.AbsDir]string{
 	Backups:       "backups",
+	Binaries:      "binaries",
 	Downloads:     "downloads",
 	Logs:          "logs",
 	Metadata:      "metadata",
 	InstalledApps: "installed-apps",
 	Prefixes:      "prefixes",
-	Wine:          "wine",
-	SteamCmd:      "steamcmd",
+	//Wine:          "wine",
+	//SteamCmd:      "steamcmd",
 }
 
 const (
@@ -45,7 +48,6 @@ const (
 	ProductDetails
 	ManualUrlChecksums
 	SteamAppInfo
-	Temp
 	Cookies
 	Tokens
 	AvailableProducts
@@ -53,13 +55,14 @@ const (
 	CatalogItems
 	GameManifests
 	Manifests
+	Temp
 	Inventory
 	GogApps
 	SteamApps
 	EgsApps
 	UmuConfigs
-	BinDownloads
-	BinUnpacks
+	Releases
+	Runtimes
 	GogPrefixes
 	SteamPrefixes
 	EgsPrefixes
@@ -70,7 +73,6 @@ var relDirNames = map[camino.RelDir]string{
 	ProductDetails:     "product-details",
 	ManualUrlChecksums: "manual-url-checksums",
 	SteamAppInfo:       "steam-appinfo",
-	Temp:               "_temp",
 	Cookies:            "_cookies",
 	Tokens:             "_tokens",
 	AvailableProducts:  "available-products",
@@ -82,8 +84,9 @@ var relDirNames = map[camino.RelDir]string{
 	GogApps:            "gog-apps",
 	SteamApps:          "steam-apps",
 	EgsApps:            "egs-apps",
-	BinDownloads:       "_downloads",
-	BinUnpacks:         "_binaries",
+	Temp:               "_temp",
+	Releases:           "releases",
+	Runtimes:           "runtimes",
 	GogPrefixes:        "gog-prefixes",
 	SteamPrefixes:      "steam-prefixes",
 	EgsPrefixes:        "egs-prefixes",
@@ -108,8 +111,8 @@ var relAbsParents = map[camino.RelDir][]camino.AbsDir{
 	SteamApps:          {InstalledApps},
 	EgsApps:            {InstalledApps},
 	UmuConfigs:         {InstalledApps},
-	BinDownloads:       {Wine, SteamCmd},
-	BinUnpacks:         {Wine, SteamCmd},
+	Releases:           {Binaries},
+	Runtimes:           {Binaries},
 	GogPrefixes:        {Prefixes},
 	SteamPrefixes:      {Prefixes},
 	EgsPrefixes:        {Prefixes},
@@ -210,8 +213,9 @@ func AbsSteamCmdBinPath(operatingSystem vangogh_integration.OperatingSystem) (st
 	case vangogh_integration.MacOS:
 		fallthrough
 	case vangogh_integration.Linux:
-		steamCmdBinariesDir := camino.GetRel(BinUnpacks, SteamCmd)
-		osSteamCmdBinariesDir := filepath.Join(steamCmdBinariesDir, operatingSystem.String())
+		runtimesDir := camino.GetRel(Runtimes, Binaries)
+		steamCmdRuntimesDir := filepath.Join(runtimesDir, steamcmd.Title)
+		osSteamCmdBinariesDir := filepath.Join(steamCmdRuntimesDir, operatingSystem.String())
 		return filepath.Join(osSteamCmdBinariesDir, steamCmdBinary[operatingSystem]), nil
 	default:
 		return "", operatingSystem.ErrUnsupported()

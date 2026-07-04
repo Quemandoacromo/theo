@@ -142,11 +142,10 @@ func prefixInstallBinary(id string, wineBinary string, absPrefixDir string, et *
 	// Currently all coded WINE binaries are direct download sources, so this if fine for now.
 	wbFilename := path.Base(requestedWineBinary.DownloadUrl)
 
-	var wineDownloadsDir string
-	wineDownloadsDir = camino.GetRel(data.BinDownloads, data.Wine)
+	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
 
 	et.title = requestedWineBinary.String()
-	et.exe = filepath.Join(wineDownloadsDir, wbFilename)
+	et.exe = filepath.Join(binariesReleasesDir, wbFilename)
 
 	if args, ok := wine_integration.WineBinariesCodesArgs[wineBinary]; ok {
 		et.args = args

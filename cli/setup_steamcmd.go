@@ -56,7 +56,7 @@ func downloadSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSyste
 	dscba := nod.NewProgress(" downloading SteamCMD for %s...", operatingSystem)
 	defer dscba.Done()
 
-	steamCmdDownloads := camino.GetRel(data.BinDownloads, data.SteamCmd)
+	steamCmdReleasesDir := camino.GetRel(data.Releases, data.Binaries)
 
 	apiBinarySteamCmdPath := path.Join(data.ApiBinaryPath, operatingSystem.String(), steamcmd.Title)
 
@@ -73,7 +73,7 @@ func downloadSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSyste
 
 	relSteamCmdFilename := filepath.Base(steamcmd.Urls[operatingSystem])
 
-	return dc.Download(steamCmdBinaryUrl, force, dscba, steamCmdDownloads, relSteamCmdFilename)
+	return dc.Download(steamCmdBinaryUrl, force, dscba, steamCmdReleasesDir, relSteamCmdFilename)
 }
 
 func unpackSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSystem, force bool) error {
@@ -91,11 +91,12 @@ func unpackSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSystem,
 		return nil
 	}
 
-	steamCmdDownloadsDir := camino.GetRel(data.BinDownloads, data.SteamCmd)
-	absSteamCmdDownload := filepath.Join(steamCmdDownloadsDir, filepath.Base(steamcmd.Urls[operatingSystem]))
+	steamCmdReleasesDir := camino.GetRel(data.Releases, data.Binaries)
+	absSteamCmdDownload := filepath.Join(steamCmdReleasesDir, filepath.Base(steamcmd.Urls[operatingSystem]))
 
-	steamCmdBinariesDir := camino.GetRel(data.BinUnpacks, data.SteamCmd)
-	osSteamCmdBinariesDir := filepath.Join(steamCmdBinariesDir, operatingSystem.String())
+	runtimesDir := camino.GetRel(data.Runtimes, data.Binaries)
+	steamCmdRuntimesDir := filepath.Join(runtimesDir, steamcmd.Title)
+	osSteamCmdBinariesDir := filepath.Join(steamCmdRuntimesDir, operatingSystem.String())
 
 	return untar(absSteamCmdDownload, osSteamCmdBinariesDir)
 }
