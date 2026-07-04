@@ -17,17 +17,14 @@ func BackupMetadata() error {
 	ba := nod.NewProgress("backing up local metadata...")
 	defer ba.Done()
 
-	backupsDir := camino.GetAbs(data.Backups)
-	metadataDir := camino.GetAbs(data.Metadata)
-
-	if err := camino.Compress(metadataDir, backupsDir); err != nil {
+	if err := camino.Compress(data.Metadata, data.Backups); err != nil {
 		return err
 	}
 
 	ca := nod.NewProgress("cleaning up old backups...")
 	defer ca.Done()
 
-	if err := camino.CleanupTimed(backupsDir, true); err != nil {
+	if err := camino.CleanupTimed(data.Backups, true); err != nil {
 		return err
 	}
 
