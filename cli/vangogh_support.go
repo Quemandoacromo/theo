@@ -594,7 +594,7 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 
 func vangoghGetUnpackDir(id string, ii *InstallInfo, rdx redux.Readable) (string, error) {
 
-	unpackDir := filepath.Join(camino.GetAbs(data.Temp), id)
+	unpackDir := filepath.Join(camino.GetRel(data.Temp, data.Downloads), id)
 
 	switch ii.OperatingSystem {
 	case vangogh_integration.Windows:

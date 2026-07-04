@@ -24,9 +24,9 @@ const (
 	Logs
 	Metadata
 	InstalledApps
+	Prefixes
 	Wine
 	SteamCmd
-	Temp
 )
 
 var absDirNames = map[camino.AbsDir]string{
@@ -35,9 +35,9 @@ var absDirNames = map[camino.AbsDir]string{
 	Logs:          "logs",
 	Metadata:      "metadata",
 	InstalledApps: "installed-apps",
+	Prefixes:      "prefixes",
 	Wine:          "wine",
 	SteamCmd:      "steamcmd",
-	Temp:          "_temp",
 }
 
 const (
@@ -45,6 +45,7 @@ const (
 	ProductDetails
 	ManualUrlChecksums
 	SteamAppInfo
+	Temp
 	GogApps
 	SteamApps
 	EgsApps
@@ -59,7 +60,7 @@ const (
 	PrefixArchive
 	BinDownloads
 	BinUnpacks
-	Prefixes
+	GogPrefixes
 	SteamPrefixes
 	EgsPrefixes
 	UmuConfigs
@@ -70,9 +71,7 @@ var relDirNames = map[camino.RelDir]string{
 	ProductDetails:     "product-details",
 	ManualUrlChecksums: "manual-url-checksums",
 	SteamAppInfo:       "steam-appinfo",
-	GogApps:            "gog-apps",
-	SteamApps:          "steam-apps",
-	EgsApps:            "egs-apps",
+	Temp:               "_temp",
 	Cookies:            "_cookies",
 	Tokens:             "_tokens",
 	AvailableProducts:  "available-products",
@@ -81,12 +80,15 @@ var relDirNames = map[camino.RelDir]string{
 	GameManifests:      "game-manifests",
 	Manifests:          "manifests",
 	Inventory:          "_inventory",
+	GogApps:            "gog-apps",
+	SteamApps:          "steam-apps",
+	EgsApps:            "egs-apps",
 	PrefixArchive:      "_prefix-archive",
 	BinDownloads:       "_downloads",
 	BinUnpacks:         "_binaries",
-	Prefixes:           "_prefixes",
-	SteamPrefixes:      "_steam-prefixes",
-	EgsPrefixes:        "_egs-prefixes",
+	GogPrefixes:        "gog-prefixes",
+	SteamPrefixes:      "steam-prefixes",
+	EgsPrefixes:        "egs-prefixes",
 	UmuConfigs:         "_umu-configs",
 }
 
@@ -95,9 +97,6 @@ var relAbsParents = map[camino.RelDir][]camino.AbsDir{
 	ProductDetails:     {Metadata},
 	ManualUrlChecksums: {Metadata},
 	SteamAppInfo:       {Metadata},
-	GogApps:            {InstalledApps},
-	SteamApps:          {InstalledApps},
-	EgsApps:            {InstalledApps},
 	Cookies:            {Metadata},
 	Tokens:             {Metadata},
 	AvailableProducts:  {Metadata},
@@ -105,14 +104,18 @@ var relAbsParents = map[camino.RelDir][]camino.AbsDir{
 	CatalogItems:       {Metadata},
 	GameManifests:      {Metadata},
 	Manifests:          {Metadata},
+	Temp:               {Downloads},
 	Inventory:          {InstalledApps},
+	GogApps:            {InstalledApps},
+	SteamApps:          {InstalledApps},
+	EgsApps:            {InstalledApps},
 	PrefixArchive:      {Backups},
 	BinDownloads:       {Wine, SteamCmd},
 	BinUnpacks:         {Wine, SteamCmd},
-	Prefixes:           {Wine},
-	SteamPrefixes:      {Wine},
-	EgsPrefixes:        {Wine},
 	UmuConfigs:         {Wine},
+	GogPrefixes:        {Prefixes},
+	SteamPrefixes:      {Prefixes},
+	EgsPrefixes:        {Prefixes},
 }
 
 var steamCmdBinary = map[vangogh_integration.OperatingSystem]string{
@@ -176,11 +179,11 @@ func AbsPrefixDir(id string, origin Origin, rdx redux.Readable) (string, error) 
 	var prefixesDir string
 	switch origin {
 	case VangoghOrigin:
-		prefixesDir = camino.GetRel(Prefixes, Wine)
+		prefixesDir = camino.GetRel(GogPrefixes, Prefixes)
 	case SteamOrigin:
-		prefixesDir = camino.GetRel(SteamPrefixes, Wine)
+		prefixesDir = camino.GetRel(SteamPrefixes, Prefixes)
 	case EpicGamesOrigin:
-		prefixesDir = camino.GetRel(EgsPrefixes, Wine)
+		prefixesDir = camino.GetRel(EgsPrefixes, Prefixes)
 	default:
 		return "", origin.ErrUnsupportedOrigin()
 	}
