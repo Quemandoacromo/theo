@@ -32,7 +32,7 @@ func vangoghGetProductDetails(id string, rdx redux.Writeable, force bool) (*vang
 	gpda := nod.NewProgress(" getting vangogh product details for %s...", id)
 	defer gpda.Done()
 
-	productDetailsDir := camino.GetRel(data.ProductDetails, vangogh_integration.Metadata)
+	productDetailsDir := camino.GetRel(data.ProductDetails, data.Metadata)
 
 	kvProductDetails, err := kevlar.New(productDetailsDir, kevlar.JsonExt)
 	if err != nil {

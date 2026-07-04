@@ -21,7 +21,7 @@ func getManualUrlChecksums(id string, rdx redux.Writeable, force bool) (map[stri
 	gmuca := nod.NewProgress(" getting manual-url checksums for %s...", id)
 	defer gmuca.Done()
 
-	manualUrlChecksumsDir := camino.GetRel(data.ManualUrlChecksums, vangogh_integration.Metadata)
+	manualUrlChecksumsDir := camino.GetRel(data.ManualUrlChecksums, data.Metadata)
 
 	kvManualUrlChecksums, err := kevlar.New(manualUrlChecksumsDir, kevlar.JsonExt)
 	if err != nil {

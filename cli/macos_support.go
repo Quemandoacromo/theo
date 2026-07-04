@@ -48,7 +48,7 @@ func macOsUnpackInstallers(id string, dls vangogh_integration.ProductDownloadLin
 	mui := nod.Begin(" unpacking %s installers with pkgutil, please wait...", id)
 	defer mui.Done()
 
-	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 	productDownloadsDir := filepath.Join(downloadsDir, id)
 
 	installerUnpacked := false
