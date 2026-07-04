@@ -13,8 +13,8 @@ import (
 	"github.com/arelate/southern_light/mojosetup_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -38,7 +38,7 @@ func linuxUnpackInstallers(id string, dls vangogh_integration.ProductDownloadLin
 			continue
 		}
 
-		downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+		downloadsDir := camino.GetAbs(data.Downloads)
 		linkInstallerPath := filepath.Join(downloadsDir, id, link.LocalFilename)
 
 		absUnpackDir := filepath.Join(unpackDir, link.LocalFilename)
@@ -83,7 +83,7 @@ func linuxInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integrat
 	liia := nod.Begin(" innoextract %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer liia.Done()
 
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 
 	for _, link := range dls {
 
@@ -93,7 +93,7 @@ func linuxInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integrat
 
 		absDstDir := filepath.Join(unpackDir, link.LocalFilename)
 		if _, err := os.Stat(absDstDir); os.IsNotExist(err) {
-			if err = os.MkdirAll(absDstDir, pathways.PermUrwGrwOr); err != nil {
+			if err = os.MkdirAll(absDstDir, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}

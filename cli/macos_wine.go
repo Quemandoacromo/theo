@@ -10,8 +10,8 @@ import (
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/southern_light/wine_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -80,7 +80,7 @@ func macOsWineExecTask(id string, et *execTask) error {
 func macOsGetAbsCxBinDir(rdx redux.Readable) (string, error) {
 
 	if rdx == nil {
-		reduxDir := data.Pwd.AbsRelDirPath(data.Redux, data.Metadata)
+		reduxDir := camino.GetRel(data.Redux, data.Metadata)
 		var err error
 		rdx, err = redux.NewReader(reduxDir, data.WineBinariesVersionsProperty)
 		if err != nil {
@@ -101,9 +101,9 @@ func macOsGetAbsCxBinDir(rdx redux.Readable) (string, error) {
 		return "", errors.New("CrossOver version not found, please run setup-wine")
 	}
 
-	wineBinaries := data.Pwd.AbsRelDirPath(data.BinUnpacks, data.Wine)
+	wineBinaries := camino.GetRel(data.BinUnpacks, data.Wine)
 
-	absCrossOverBinDir := filepath.Join(wineBinaries, pathways.Sanitize(wine_integration.CrossOver), latestCxVersion, relCxAppDir, relCxBinDir)
+	absCrossOverBinDir := filepath.Join(wineBinaries, camino.Sanitize(wine_integration.CrossOver), latestCxVersion, relCxAppDir, relCxBinDir)
 	if _, err := os.Stat(absCrossOverBinDir); err == nil {
 		return absCrossOverBinDir, nil
 	}

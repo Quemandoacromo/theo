@@ -19,10 +19,10 @@ import (
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
 	"github.com/boggydigital/author"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/dolo"
 	"github.com/boggydigital/kevlar"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -31,7 +31,7 @@ func vangoghGetProductDetails(id string, rdx redux.Writeable, force bool) (*vang
 	gpda := nod.NewProgress(" getting vangogh product details for %s...", id)
 	defer gpda.Done()
 
-	productDetailsDir := data.Pwd.AbsRelDirPath(data.ProductDetails, vangogh_integration.Metadata)
+	productDetailsDir := camino.GetRel(data.ProductDetails, vangogh_integration.Metadata)
 
 	kvProductDetails, err := kevlar.New(productDetailsDir, kevlar.JsonExt)
 	if err != nil {
@@ -205,7 +205,7 @@ func vangoghGetAvailableProducts(force bool) ([]vangogh_integration.AvailablePro
 	vlapa := nod.Begin("getting available vangogh products...")
 	defer vlapa.Done()
 
-	availableProductsDir := data.Pwd.AbsRelDirPath(data.AvailableProducts, data.Metadata)
+	availableProductsDir := camino.GetRel(data.AvailableProducts, data.Metadata)
 	kvAvailableProducts, err := kevlar.New(availableProductsDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
@@ -532,7 +532,7 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 	// 8. cleanup unpack directory
 
 	// 1
-	installedAppsDir := data.Pwd.AbsDirPath(data.InstalledApps)
+	installedAppsDir := camino.GetAbs(data.InstalledApps)
 
 	if err := originHasFreeSpace(id, installedAppsDir, ii, originData); err != nil {
 		return err
@@ -595,7 +595,7 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 
 func vangoghGetUnpackDir(id string, ii *InstallInfo, rdx redux.Readable) (string, error) {
 
-	unpackDir := filepath.Join(data.Pwd.AbsDirPath(data.Temp), id)
+	unpackDir := filepath.Join(camino.GetAbs(data.Temp), id)
 
 	switch ii.OperatingSystem {
 	case vangogh_integration.Windows:
@@ -634,7 +634,7 @@ func vangoghUnpackInstallers(id string, ii *InstallInfo, dls vangogh_integration
 	}
 
 	if _, err := os.Stat(unpackDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(unpackDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(unpackDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}
@@ -703,7 +703,7 @@ func vangoghPlaceUnpackedLinkPayload(link *vangogh_integration.ProductDownloadLi
 	defer mpda.Done()
 
 	if _, err := os.Stat(absInstallationPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(absInstallationPath, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(absInstallationPath, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}
@@ -722,7 +722,7 @@ func vangoghPlaceUnpackedLinkPayload(link *vangogh_integration.ProductDownloadLi
 		absDstDir, _ := filepath.Split(absDstPath)
 
 		if _, err = os.Stat(absDstDir); os.IsNotExist(err) {
-			if err = os.MkdirAll(absDstDir, pathways.PermUrwGrwOr); err != nil {
+			if err = os.MkdirAll(absDstDir, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}
@@ -750,7 +750,7 @@ func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData
 		return err
 	}
 
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 
 	if err := originHasFreeSpace(id, downloadsDir, ii, originData, manualUrlFilter...); err != nil {
 		return err
@@ -977,7 +977,7 @@ func vangoghValidateLinks(id string,
 	vla := nod.NewProgress("validating %s...", productDetails.Title)
 	defer vla.Done()
 
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 
 	downloadTypes := []vangogh_integration.DownloadType{vangogh_integration.Installer}
 	if !ii.NoDlcs {

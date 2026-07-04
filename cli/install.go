@@ -10,8 +10,8 @@ import (
 	"github.com/arelate/southern_light/steam_grid"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -310,7 +310,7 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 			return "", err
 		}
 
-		installedAppsDir := data.Pwd.AbsDirPath(data.InstalledApps)
+		installedAppsDir := camino.GetAbs(data.InstalledApps)
 
 		osLangInstalledAppsDir := filepath.Join(installedAppsDir, data.OsLangCode(ii.OperatingSystem, ii.LangCode))
 
@@ -319,7 +319,7 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 			return "", err
 		}
 
-		appInstalledPath := pathways.Sanitize(title)
+		appInstalledPath := camino.Sanitize(title)
 
 		switch ii.OperatingSystem {
 		case vangogh_integration.MacOS:
@@ -338,7 +338,7 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 			return "", err
 		}
 	case data.EpicGamesOrigin:
-		egsAppsDir := data.Pwd.AbsDirPath(data.EgsApps)
+		egsAppsDir := camino.GetAbs(data.EgsApps)
 
 		osEgsAppsDir := filepath.Join(egsAppsDir, ii.OperatingSystem.String())
 
@@ -350,7 +350,7 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 		}
 
 		if title, sure := rdx.GetLastVal(vangogh_integration.EgsTitleProperty, id); sure && title != "" {
-			appTitlePath = pathways.Sanitize(title)
+			appTitlePath = camino.Sanitize(title)
 		} else {
 			return "", errors.New("product title not defined for: " + id)
 		}

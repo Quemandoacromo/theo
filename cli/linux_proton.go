@@ -10,8 +10,8 @@ import (
 
 	"github.com/arelate/southern_light/wine_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -37,7 +37,7 @@ func linuxProtonExecTask(id string, et *execTask) error {
 		poa.EndWithResult(strings.Join(et.protonOptions, " "))
 	}
 
-	reduxDir := data.Pwd.AbsRelDirPath(data.Redux, data.Metadata)
+	reduxDir := camino.GetRel(data.Redux, data.Metadata)
 	rdx, err := redux.NewReader(reduxDir, data.WineBinariesVersionsProperty)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func linuxInitPrefix(absPrefixDir string, _ bool) error {
 	defer lipa.Done()
 
 	if _, err := os.Stat(absPrefixDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(absPrefixDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(absPrefixDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}

@@ -8,8 +8,8 @@ import (
 	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -57,7 +57,7 @@ func prefixRunInstallers(id string, ii *InstallInfo, dls vangogh_integration.Pro
 	puia := nod.Begin(" running %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer puia.Done()
 
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 
 	absPrefixDir, err := data.AbsPrefixDir(id, ii.Origin, rdx)
 	if err != nil {
@@ -72,7 +72,7 @@ func prefixRunInstallers(id string, ii *InstallInfo, dls vangogh_integration.Pro
 
 		absDstDir := filepath.Join(unpackDir, link.LocalFilename)
 		if _, err = os.Stat(absDstDir); os.IsNotExist(err) {
-			if err = os.MkdirAll(absDstDir, pathways.PermUrwGrwOr); err != nil {
+			if err = os.MkdirAll(absDstDir, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}

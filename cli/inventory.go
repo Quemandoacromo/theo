@@ -9,8 +9,8 @@ import (
 
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -92,7 +92,7 @@ func appendInventory(id, langCode string, operatingSystem vangogh_integration.Op
 
 	pathDir, _ := filepath.Split(absInventoryDir)
 	if _, err = os.Stat(pathDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(pathDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(pathDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}

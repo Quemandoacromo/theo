@@ -8,6 +8,7 @@ import (
 	"github.com/arelate/southern_light/steamcmd"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/dolo"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
@@ -54,7 +55,7 @@ func downloadSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSyste
 	dscba := nod.NewProgress(" downloading SteamCMD for %s...", operatingSystem)
 	defer dscba.Done()
 
-	steamCmdDownloads := data.Pwd.AbsRelDirPath(data.BinDownloads, data.SteamCmd)
+	steamCmdDownloads := camino.GetRel(data.BinDownloads, data.SteamCmd)
 
 	query := url.Values{
 		vangogh_integration.UrlOperatingSystemParameter: {operatingSystem.String()},
@@ -91,10 +92,10 @@ func unpackSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSystem,
 		return nil
 	}
 
-	steamCmdDownloadsDir := data.Pwd.AbsRelDirPath(data.BinDownloads, data.SteamCmd)
+	steamCmdDownloadsDir := camino.GetRel(data.BinDownloads, data.SteamCmd)
 	absSteamCmdDownload := filepath.Join(steamCmdDownloadsDir, filepath.Base(steamcmd.Urls[operatingSystem]))
 
-	steamCmdBinariesDir := data.Pwd.AbsRelDirPath(data.BinUnpacks, data.SteamCmd)
+	steamCmdBinariesDir := camino.GetRel(data.BinUnpacks, data.SteamCmd)
 	osSteamCmdBinariesDir := filepath.Join(steamCmdBinariesDir, operatingSystem.String())
 
 	return untar(absSteamCmdDownload, osSteamCmdBinariesDir)

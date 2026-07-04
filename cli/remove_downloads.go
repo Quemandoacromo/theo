@@ -5,6 +5,7 @@ import (
 
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
 )
@@ -65,7 +66,7 @@ func RemoveDownloads(id string, ii *InstallInfo, rdx redux.Writeable) error {
 
 func originRemoveDownloads(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
 
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 
 	switch ii.Origin {
 	case data.VangoghOrigin:

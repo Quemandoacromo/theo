@@ -17,9 +17,9 @@ import (
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/southern_light/wine_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/dolo"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -155,7 +155,7 @@ func downloadWineBinary(binary *vangogh_integration.WineBinaryDetails, rdx redux
 		return err
 	}
 
-	wineDownloads := data.Pwd.AbsRelDirPath(data.BinDownloads, data.Wine)
+	wineDownloads := camino.GetRel(data.BinDownloads, data.Wine)
 
 	if currentVersion, ok := rdx.GetLastVal(data.WineBinariesVersionsProperty, binary.Title); ok && binary.Version == currentVersion && !force {
 		dwba.EndWithResult("latest version already available")
@@ -186,7 +186,7 @@ func validateWineBinaries(wbd []vangogh_integration.WineBinaryDetails, operating
 	vwba := nod.NewProgress("validating WINE binaries...")
 	defer vwba.Done()
 
-	wineDownloads := data.Pwd.AbsRelDirPath(data.BinDownloads, data.Wine)
+	wineDownloads := camino.GetRel(data.BinDownloads, data.Wine)
 
 	for _, wineBinary := range wbd {
 		if wineBinary.OS != operatingSystem && wineBinary.OS != vangogh_integration.Windows {
@@ -232,7 +232,7 @@ func cleanupDownloadedWineBinaries(wbd []vangogh_integration.WineBinaryDetails, 
 		expectedFiles = append(expectedFiles, wineBinary.Filename)
 	}
 
-	wineDownloads := data.Pwd.AbsRelDirPath(data.BinDownloads, data.Wine)
+	wineDownloads := camino.GetRel(data.BinDownloads, data.Wine)
 
 	wineDownloadsDir, err := os.Open(wineDownloads)
 	if err != nil {
@@ -282,8 +282,8 @@ func unpackWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 	uwba := nod.Begin("unpacking WINE binaries...")
 	defer uwba.Done()
 
-	wineDownloads := data.Pwd.AbsRelDirPath(data.BinDownloads, data.Wine)
-	wineBinaries := data.Pwd.AbsRelDirPath(data.BinUnpacks, data.Wine)
+	wineDownloads := camino.GetRel(data.BinDownloads, data.Wine)
+	wineBinaries := camino.GetRel(data.BinUnpacks, data.Wine)
 
 	for _, wineBinary := range wbd {
 		if wineBinary.OS != operatingSystem {
@@ -291,7 +291,7 @@ func unpackWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 		}
 
 		srcPath := filepath.Join(wineDownloads, wineBinary.Filename)
-		dstPath := filepath.Join(wineBinaries, pathways.Sanitize(wineBinary.Title), wineBinary.Version)
+		dstPath := filepath.Join(wineBinaries, camino.Sanitize(wineBinary.Title), wineBinary.Version)
 
 		if _, err := os.Stat(dstPath); err == nil && !force {
 			continue
@@ -346,7 +346,7 @@ func cleanupUnpackedWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 	cuwba := nod.NewProgress("cleaning up unpacked WINE binaries...")
 	defer cuwba.Done()
 
-	wineBinaries := data.Pwd.AbsRelDirPath(data.BinUnpacks, data.Wine)
+	wineBinaries := camino.GetRel(data.BinUnpacks, data.Wine)
 
 	absExpectedDirs := make([]string, 0)
 	absActualDirs := make([]string, 0)
@@ -356,7 +356,7 @@ func cleanupUnpackedWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 			continue
 		}
 
-		absTitleDir := filepath.Join(wineBinaries, pathways.Sanitize(wineBinary.Title))
+		absTitleDir := filepath.Join(wineBinaries, camino.Sanitize(wineBinary.Title))
 
 		absLatestVersionDir := filepath.Join(absTitleDir, wineBinary.Version)
 		absExpectedDirs = append(absExpectedDirs, absLatestVersionDir)
@@ -420,7 +420,7 @@ func untar(srcPath, dstPath string, options ...string) error {
 
 	if dstPath != "" {
 		if _, err = os.Stat(dstPath); err != nil {
-			if err = os.MkdirAll(dstPath, pathways.PermUrwGrwOr); err != nil {
+			if err = os.MkdirAll(dstPath, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}
@@ -449,7 +449,7 @@ func unzip(srcPath, dstPath string, options ...string) error {
 
 	if dstPath != "" {
 		if _, err = os.Stat(dstPath); err != nil {
-			if err = os.MkdirAll(dstPath, pathways.PermUrwGrwOr); err != nil {
+			if err = os.MkdirAll(dstPath, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}

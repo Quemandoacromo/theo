@@ -28,7 +28,7 @@ func main() {
 	tsa := nod.Begin("theo is complementing vangogh experience")
 	defer tsa.Done()
 
-	if err := data.InitPathways(); err != nil {
+	if err := data.InitTheoCamino(); err != nil {
 		log.Fatalln(err)
 	}
 

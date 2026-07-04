@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/arelate/southern_light/wine_integration"
-	"github.com/boggydigital/pathways"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/redux"
 )
 
@@ -45,7 +45,7 @@ func githubLatestReleasePath(relBinPath string, repo string, rdx redux.Readable)
 		return "", errors.New(repo + " latest version not found, please run setup-wine")
 	}
 
-	absBinPath := filepath.Join(Pwd.AbsRelDirPath(BinUnpacks, Wine), pathways.Sanitize(repo), latestRelease)
+	absBinPath := filepath.Join(camino.GetRel(BinUnpacks, Wine), camino.Sanitize(repo), latestRelease)
 	if relBinPath != "" {
 		absBinPath = filepath.Join(absBinPath, relBinPath)
 	}

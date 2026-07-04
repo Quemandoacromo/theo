@@ -10,6 +10,7 @@ import (
 
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/kevlar"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
@@ -20,7 +21,7 @@ func getManualUrlChecksums(id string, rdx redux.Writeable, force bool) (map[stri
 	gmuca := nod.NewProgress(" getting manual-url checksums for %s...", id)
 	defer gmuca.Done()
 
-	manualUrlChecksumsDir := data.Pwd.AbsRelDirPath(data.ManualUrlChecksums, vangogh_integration.Metadata)
+	manualUrlChecksumsDir := camino.GetRel(data.ManualUrlChecksums, vangogh_integration.Metadata)
 
 	kvManualUrlChecksums, err := kevlar.New(manualUrlChecksumsDir, kevlar.JsonExt)
 	if err != nil {

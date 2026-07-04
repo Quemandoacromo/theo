@@ -13,8 +13,8 @@ import (
 	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -48,7 +48,7 @@ func macOsUnpackInstallers(id string, dls vangogh_integration.ProductDownloadLin
 	mui := nod.Begin(" unpacking %s installers with pkgutil, please wait...", id)
 	defer mui.Done()
 
-	downloadsDir := data.Pwd.AbsDirPath(vangogh_integration.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 	productDownloadsDir := filepath.Join(downloadsDir, id)
 
 	installerUnpacked := false
@@ -108,7 +108,7 @@ func macOsInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integrat
 	miia := nod.Begin(" innoextract %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer miia.Done()
 
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 
 	innoextractPath, err := exec.LookPath(innoextractBinaryFn)
 	if err != nil {
@@ -123,7 +123,7 @@ func macOsInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integrat
 
 		absDstDir := filepath.Join(unpackDir, link.LocalFilename)
 		if _, err = os.Stat(absDstDir); os.IsNotExist(err) {
-			if err = os.MkdirAll(absDstDir, pathways.PermUrwGrwOr); err != nil {
+			if err = os.MkdirAll(absDstDir, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}
@@ -149,7 +149,7 @@ func macOsUnpackLink(link *vangogh_integration.ProductDownloadLink, linkPath, un
 	unpackLinkParentDir, _ := filepath.Split(unpackLinkDir)
 
 	if _, err := os.Stat(unpackLinkParentDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(unpackLinkParentDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(unpackLinkParentDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}
@@ -297,7 +297,7 @@ func macOsPostInstallActions(id string,
 			continue
 		}
 
-		downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+		downloadsDir := camino.GetAbs(data.Downloads)
 
 		productDownloadsDir := filepath.Join(downloadsDir, id)
 
@@ -393,7 +393,7 @@ func macOsCatFiles(srcGlob string, dstPath string) error {
 
 	dstDir, _ := filepath.Split(dstPath)
 	if _, err := os.Stat(dstDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(dstDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(dstDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}

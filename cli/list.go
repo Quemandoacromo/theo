@@ -14,8 +14,8 @@ import (
 	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -240,7 +240,7 @@ func listInstalled(ii *InstallInfo) error {
 
 			if title, terr := data.GetTitleProperty(id, rdx); terr == nil && title != "" {
 				titleLine = fmt.Sprintf("%s (%s)", title, titleLine)
-				installDir = pathways.Sanitize(title)
+				installDir = camino.Sanitize(title)
 			} else if terr != nil {
 				return terr
 			}

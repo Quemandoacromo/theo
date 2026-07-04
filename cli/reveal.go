@@ -8,6 +8,7 @@ import (
 
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
 )
@@ -110,7 +111,7 @@ func revealBackups() error {
 	rda := nod.Begin("revealing backups...")
 	defer rda.Done()
 
-	return currentOsReveal(data.Pwd.AbsDirPath(data.Backups))
+	return currentOsReveal(camino.GetAbs(data.Backups))
 }
 
 func revealDownloads(id string) error {
@@ -118,7 +119,7 @@ func revealDownloads(id string) error {
 	rda := nod.Begin("revealing downloads...")
 	defer rda.Done()
 
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 
 	productDownloadsDir := filepath.Join(downloadsDir, id)
 

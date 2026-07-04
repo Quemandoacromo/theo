@@ -9,7 +9,7 @@ import (
 
 	"github.com/arelate/southern_light/wine_integration"
 	"github.com/arelate/theo/data"
-	"github.com/boggydigital/pathways"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/redux"
 )
 
@@ -42,7 +42,7 @@ func getLatestUmuConfigsDir(rdx redux.Readable) (string, error) {
 		return "", errors.New("umu-launcher version not found, please run setup-wine")
 	}
 
-	umuConfigsDir := data.Pwd.AbsRelDirPath(data.UmuConfigs, data.Wine)
+	umuConfigsDir := camino.GetRel(data.UmuConfigs, data.Wine)
 	latestUmuConfigsDir := filepath.Join(umuConfigsDir, latestUmuLauncherVersion)
 
 	return latestUmuConfigsDir, nil
@@ -57,7 +57,7 @@ func getAbsUmuConfigFilename(id, exePath string, rdx redux.Readable) (string, er
 
 	_, exeFilename := filepath.Split(exePath)
 
-	umuConfigPath := filepath.Join(latestUmuConfigsDir, id+"-"+pathways.Sanitize(exeFilename)+".toml")
+	umuConfigPath := filepath.Join(latestUmuConfigsDir, id+"-"+camino.Sanitize(exeFilename)+".toml")
 
 	return umuConfigPath, nil
 }
@@ -77,7 +77,7 @@ func createUmuConfig(cfg *UmuConfig, rdx redux.Readable) (string, error) {
 
 	umuConfigDir, _ := filepath.Split(umuConfigPath)
 	if _, err = os.Stat(umuConfigDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(umuConfigDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(umuConfigDir, camino.DefaultFileMode); err != nil {
 			return "", err
 		}
 	}

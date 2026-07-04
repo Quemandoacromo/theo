@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/arelate/southern_light/vangogh_integration"
-	"github.com/boggydigital/pathways"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/redux"
 )
 
@@ -19,105 +19,123 @@ const (
 )
 
 const (
-	Backups       pathways.AbsDir = "backups"
-	Downloads     pathways.AbsDir = "downloads"
-	InstalledApps pathways.AbsDir = "installed-apps"
-	SteamApps     pathways.AbsDir = "steam-apps"
-	EgsApps       pathways.AbsDir = "egs-apps"
-	Logs          pathways.AbsDir = "logs"
-	Metadata      pathways.AbsDir = "metadata"
-	Wine          pathways.AbsDir = "wine"
-	SteamCmd      pathways.AbsDir = "steamcmd"
-	Temp          pathways.AbsDir = "_temp"
+	Backups camino.AbsDir = iota
+	Downloads
+	Logs
+	Metadata
+	InstalledApps
+	SteamApps
+	EgsApps
+	Wine
+	SteamCmd
+	Temp
 )
 
+var absDirNames = map[camino.AbsDir]string{
+	Backups:       "backups",
+	Downloads:     "downloads",
+	Logs:          "logs",
+	Metadata:      "metadata",
+	InstalledApps: "installed-apps",
+	SteamApps:     "steam-apps",
+	EgsApps:       "egs-apps",
+	Wine:          "wine",
+	SteamCmd:      "steamcmd",
+	Temp:          "_temp",
+}
+
 const (
-	Redux              pathways.RelDir = "_redux"               // Metadata
-	ProductDetails     pathways.RelDir = "product-details"      // Metadata
-	ManualUrlChecksums pathways.RelDir = "manual-url-checksums" // Metadata
-	SteamAppInfo       pathways.RelDir = "steam-appinfo"        // Metadata
-	Cookies            pathways.RelDir = "_cookies"             // Metadata
-	Tokens             pathways.RelDir = "_tokens"              // Metadata
-	AvailableProducts  pathways.RelDir = "available-products"   // Metadata
-	GameAssets         pathways.RelDir = "game-assets"          // Metadata
-	CatalogItems       pathways.RelDir = "catalog-items"        // Metadata
-	GameManifests      pathways.RelDir = "game-manifests"       // Metadata
-	Manifests          pathways.RelDir = "manifests"            // Metadata
-	Inventory          pathways.RelDir = "_inventory"           // InstalledApps
-	PrefixArchive      pathways.RelDir = "_prefix-archive"      // Backups
-	BinDownloads       pathways.RelDir = "_downloads"           // Wine, SteamCmd
-	BinUnpacks         pathways.RelDir = "_binaries"            // Wine, SteamCmd
-	Prefixes           pathways.RelDir = "_prefixes"            // Wine
-	SteamPrefixes      pathways.RelDir = "_steam-prefixes"      // Wine
-	EgsPrefixes        pathways.RelDir = "_egs-prefixes"        // Wine
-	UmuConfigs         pathways.RelDir = "_umu-configs"         // Wine
+	Redux camino.RelDir = iota
+	ProductDetails
+	ManualUrlChecksums
+	SteamAppInfo
+	Cookies
+	Tokens
+	AvailableProducts
+	GameAssets
+	CatalogItems
+	GameManifests
+	Manifests
+	Inventory
+	PrefixArchive
+	BinDownloads
+	BinUnpacks
+	Prefixes
+	SteamPrefixes
+	EgsPrefixes
+	UmuConfigs
 )
+
+var relDirNames = map[camino.RelDir]string{
+	Redux:              "_redux",
+	ProductDetails:     "product-details",
+	ManualUrlChecksums: "manual-url-checksums",
+	SteamAppInfo:       "steam-appinfo",
+	Cookies:            "_cookies",
+	Tokens:             "_tokens",
+	AvailableProducts:  "available-products",
+	GameAssets:         "game-assets",
+	CatalogItems:       "catalog-items",
+	GameManifests:      "game-manifests",
+	Manifests:          "manifests",
+	Inventory:          "_inventory",
+	PrefixArchive:      "_prefix-archive",
+	BinDownloads:       "_downloads",
+	BinUnpacks:         "_binaries",
+	Prefixes:           "_prefixes",
+	SteamPrefixes:      "_steam-prefixes",
+	EgsPrefixes:        "_egs-prefixes",
+	UmuConfigs:         "_umu-configs",
+}
+
+var relAbsParents = map[camino.RelDir][]camino.AbsDir{
+	Redux:              {Metadata},
+	ProductDetails:     {Metadata},
+	ManualUrlChecksums: {Metadata},
+	SteamAppInfo:       {Metadata},
+	Cookies:            {Metadata},
+	Tokens:             {Metadata},
+	AvailableProducts:  {Metadata},
+	GameAssets:         {Metadata},
+	CatalogItems:       {Metadata},
+	GameManifests:      {Metadata},
+	Manifests:          {Metadata},
+	Inventory:          {InstalledApps},
+	PrefixArchive:      {Backups},
+	BinDownloads:       {Wine, SteamCmd},
+	BinUnpacks:         {Wine, SteamCmd},
+	Prefixes:           {Wine},
+	SteamPrefixes:      {Wine},
+	EgsPrefixes:        {Wine},
+	UmuConfigs:         {Wine},
+}
 
 var steamCmdBinary = map[vangogh_integration.OperatingSystem]string{
 	vangogh_integration.MacOS: "steamcmd.sh",
 	vangogh_integration.Linux: "steamcmd.sh",
 }
 
-var Pwd pathways.Pathway
-
-func InitPathways() error {
+func InitTheoCamino() error {
 	udhd, err := UserDataHomeDir()
 	if err != nil {
 		return err
 	}
 
-	rootDir := filepath.Join(udhd, theoDirname)
-	if _, err = os.Stat(rootDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(rootDir, pathways.PermUrwGrwOr); err != nil {
+	theoRootDir := filepath.Join(udhd, theoDirname)
+	if _, err = os.Stat(theoRootDir); os.IsNotExist(err) {
+		if err = os.MkdirAll(theoRootDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}
 
-	Pwd, err = pathways.NewRoot(rootDir)
-	if err != nil {
-		return err
+	absDirPaths := make(map[camino.AbsDir]string)
+
+	for ad, name := range absDirNames {
+		absDirPaths[ad] = filepath.Join(theoRootDir, name)
 	}
 
-	for _, ad := range []pathways.AbsDir{Backups, Metadata, Downloads, InstalledApps, SteamApps, Wine, SteamCmd, Logs, Temp} {
-		absDir := filepath.Join(rootDir, string(ad))
-		if _, err = os.Stat(absDir); os.IsNotExist(err) {
-			if err = os.MkdirAll(absDir, pathways.PermUrwGrwOr); err != nil {
-				return err
-			}
-		}
-	}
+	return camino.Register(absDirPaths, relDirNames, relAbsParents)
 
-	for rd, ads := range map[pathways.RelDir][]pathways.AbsDir{
-		PrefixArchive:      {Backups},
-		Redux:              {Metadata},
-		ProductDetails:     {Metadata},
-		ManualUrlChecksums: {Metadata},
-		Cookies:            {Metadata},
-		Tokens:             {Metadata},
-		AvailableProducts:  {Metadata},
-		GameAssets:         {Metadata},
-		CatalogItems:       {Metadata},
-		GameManifests:      {Metadata},
-		Manifests:          {Metadata},
-		Inventory:          {InstalledApps},
-		BinUnpacks:         {Wine, SteamCmd},
-		BinDownloads:       {Wine, SteamCmd},
-		Prefixes:           {Wine},
-		SteamPrefixes:      {Wine},
-		EgsPrefixes:        {Wine},
-		UmuConfigs:         {Wine},
-	} {
-		for _, ad := range ads {
-			absRelDir := filepath.Join(rootDir, string(ad), string(rd))
-			if _, err = os.Stat(absRelDir); os.IsNotExist(err) {
-				if err = os.MkdirAll(absRelDir, pathways.PermUrwGrwOr); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
 }
 
 func GetTitleProperty(id string, rdx redux.Readable) (string, error) {
@@ -153,11 +171,11 @@ func AbsPrefixDir(id string, origin Origin, rdx redux.Readable) (string, error) 
 	var prefixesDir string
 	switch origin {
 	case VangoghOrigin:
-		prefixesDir = Pwd.AbsRelDirPath(Prefixes, Wine)
+		prefixesDir = camino.GetRel(Prefixes, Wine)
 	case SteamOrigin:
-		prefixesDir = Pwd.AbsRelDirPath(SteamPrefixes, Wine)
+		prefixesDir = camino.GetRel(SteamPrefixes, Wine)
 	case EpicGamesOrigin:
-		prefixesDir = Pwd.AbsRelDirPath(EgsPrefixes, Wine)
+		prefixesDir = camino.GetRel(EgsPrefixes, Wine)
 	default:
 		return "", origin.ErrUnsupportedOrigin()
 	}
@@ -167,19 +185,19 @@ func AbsPrefixDir(id string, origin Origin, rdx redux.Readable) (string, error) 
 		return "", err
 	}
 
-	return filepath.Join(prefixesDir, pathways.Sanitize(title)), nil
+	return filepath.Join(prefixesDir, camino.Sanitize(title)), nil
 }
 
 func AbsInventoryFilename(id, langCode string, operatingSystem vangogh_integration.OperatingSystem, rdx redux.Readable) (string, error) {
 
-	osLangInventoryDir := filepath.Join(Pwd.AbsRelDirPath(Inventory, InstalledApps), OsLangCode(operatingSystem, langCode))
+	osLangInventoryDir := filepath.Join(camino.GetRel(Inventory, InstalledApps), OsLangCode(operatingSystem, langCode))
 
 	title, err := GetTitleProperty(id, rdx)
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(osLangInventoryDir, pathways.Sanitize(title)+inventoryExt), nil
+	return filepath.Join(osLangInventoryDir, camino.Sanitize(title)+inventoryExt), nil
 }
 
 func AbsSteamCmdBinPath(operatingSystem vangogh_integration.OperatingSystem) (string, error) {
@@ -187,7 +205,7 @@ func AbsSteamCmdBinPath(operatingSystem vangogh_integration.OperatingSystem) (st
 	case vangogh_integration.MacOS:
 		fallthrough
 	case vangogh_integration.Linux:
-		steamCmdBinariesDir := Pwd.AbsRelDirPath(BinUnpacks, SteamCmd)
+		steamCmdBinariesDir := camino.GetRel(BinUnpacks, SteamCmd)
 		osSteamCmdBinariesDir := filepath.Join(steamCmdBinariesDir, operatingSystem.String())
 		return filepath.Join(osSteamCmdBinariesDir, steamCmdBinary[operatingSystem]), nil
 	default:
@@ -210,15 +228,15 @@ func AbsSteamAppInstallDir(steamAppId string, operatingSystem vangogh_integratio
 		return "", errors.New("Steam app name not found for " + steamAppId)
 	}
 
-	steamAppsDir := Pwd.AbsDirPath(SteamApps)
+	steamAppsDir := camino.GetAbs(SteamApps)
 
-	return filepath.Join(steamAppsDir, operatingSystem.String(), pathways.Sanitize(steamAppName)), nil
+	return filepath.Join(steamAppsDir, operatingSystem.String(), camino.Sanitize(steamAppName)), nil
 }
 
 func AbsChunksDownloadDir(appName string, operatingSystem vangogh_integration.OperatingSystem) string {
-	return filepath.Join(Pwd.AbsDirPath(Downloads), fmt.Sprintf("%s-%s", appName, operatingSystem))
+	return filepath.Join(camino.GetAbs(Downloads), fmt.Sprintf("%s-%s", appName, operatingSystem))
 }
 
 func AbsReduxDir() string {
-	return Pwd.AbsRelDirPath(Redux, Metadata)
+	return camino.GetRel(Redux, Metadata)
 }

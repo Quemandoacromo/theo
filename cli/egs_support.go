@@ -20,11 +20,11 @@ import (
 	"github.com/arelate/southern_light/steam_grid"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/coost"
 	"github.com/boggydigital/dolo"
 	"github.com/boggydigital/kevlar"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -56,7 +56,7 @@ var (
 func egsGetClient() (*http.Client, error) {
 
 	if egsClient == nil {
-		cookiesDir := data.Pwd.AbsRelDirPath(data.Cookies, data.Metadata)
+		cookiesDir := camino.GetRel(data.Cookies, data.Metadata)
 		egsCookiePath := filepath.Join(cookiesDir, egsCookiesFilename)
 
 		jar, err := coost.Read(egs_integration.HostUrl(), egsCookiePath)
@@ -76,10 +76,10 @@ func egsGetAccessToken(cookieStr string) error {
 	eggata := nod.Begin("getting EGS access token...")
 	defer eggata.Done()
 
-	cookiesDir := data.Pwd.AbsRelDirPath(data.Cookies, data.Metadata)
+	cookiesDir := camino.GetRel(data.Cookies, data.Metadata)
 	egsCookiePath := filepath.Join(cookiesDir, egsCookiesFilename)
 
-	tokensDir := data.Pwd.AbsRelDirPath(data.Tokens, data.Metadata)
+	tokensDir := camino.GetRel(data.Tokens, data.Metadata)
 	kvTokens, err := kevlar.New(tokensDir, kevlar.JsonExt)
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ func egsPostToken(token string, grantType egs_integration.GrantType) error {
 		return err
 	}
 
-	tokensDir := data.Pwd.AbsRelDirPath(data.Tokens, data.Metadata)
+	tokensDir := camino.GetRel(data.Tokens, data.Metadata)
 	kvTokens, err := kevlar.New(tokensDir, kevlar.JsonExt)
 	if err != nil {
 		return err
@@ -161,7 +161,7 @@ func egsGetStoredPostTokenResponse() (*egs_integration.PostTokenResponse, error)
 	egsptr := nod.Begin("getting stored EGS post token response...")
 	defer egsptr.Done()
 
-	tokensDir := data.Pwd.AbsRelDirPath(data.Tokens, data.Metadata)
+	tokensDir := camino.GetRel(data.Tokens, data.Metadata)
 	kvTokens, err := kevlar.New(tokensDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
@@ -356,7 +356,7 @@ func egsReadLocalGameAssets(operatingSystem vangogh_integration.OperatingSystem)
 
 	egsOsApKey := originAvailableProductsKey(data.EpicGamesOrigin, operatingSystem)
 
-	availableProductsDir := data.Pwd.AbsRelDirPath(data.AvailableProducts, data.Metadata)
+	availableProductsDir := camino.GetRel(data.AvailableProducts, data.Metadata)
 	kvAvailableProducts, err := kevlar.New(availableProductsDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
@@ -404,7 +404,7 @@ func egsFetchGameAssets(operatingSystem vangogh_integration.OperatingSystem) err
 
 	egsOsApKey := originAvailableProductsKey(data.EpicGamesOrigin, operatingSystem)
 
-	availableProductsDir := data.Pwd.AbsRelDirPath(data.AvailableProducts, data.Metadata)
+	availableProductsDir := camino.GetRel(data.AvailableProducts, data.Metadata)
 	kvAvailableProducts, err := kevlar.New(availableProductsDir, kevlar.JsonExt)
 	if err != nil {
 		return err
@@ -415,7 +415,7 @@ func egsFetchGameAssets(operatingSystem vangogh_integration.OperatingSystem) err
 
 func egsGetCatalogItem(gameAsset *egs_integration.GameAsset, ii *InstallInfo, rdx redux.Writeable) (*egs_integration.CatalogItem, error) {
 
-	catalogItemsDir := data.Pwd.AbsRelDirPath(data.CatalogItems, data.Metadata)
+	catalogItemsDir := camino.GetRel(data.CatalogItems, data.Metadata)
 	kvCatalogItems, err := kevlar.New(catalogItemsDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
@@ -529,7 +529,7 @@ func egsGetGameManifest(gameAsset *egs_integration.GameAsset, ii *InstallInfo, f
 	eggma := nod.Begin("getting EGS game manifest...")
 	defer eggma.Done()
 
-	gameManifestsDir := data.Pwd.AbsRelDirPath(data.GameManifests, data.Metadata)
+	gameManifestsDir := camino.GetRel(data.GameManifests, data.Metadata)
 	kvGameManifests, err := kevlar.New(gameManifestsDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
@@ -592,7 +592,7 @@ func egsGetManifest(appName string, gameManifest *egs_integration.GameManifest, 
 	egma := nod.Begin("getting EGS manifest...")
 	defer egma.Done()
 
-	manifestsDir := data.Pwd.AbsRelDirPath(data.Manifests, data.Metadata)
+	manifestsDir := camino.GetRel(data.Manifests, data.Metadata)
 	kvManifests, err := kevlar.New(manifestsDir, egs_integration.ManifestExt)
 	if err != nil {
 		return nil, err
@@ -833,7 +833,7 @@ func egsAssembleFile(chunkedFile *egs_integration.File, featureLevel uint32, chu
 	absOutputDir, _ := filepath.Split(absOutputFilename)
 
 	if _, err = os.Stat(absOutputDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(absOutputDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(absOutputDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}
@@ -981,7 +981,7 @@ func egsManifestSize(manifest *egs_integration.Manifest) int64 {
 
 func egsAssembleValidateChunks(appName string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable) error {
 
-	egsAppsDir := data.Pwd.AbsDirPath(data.EgsApps)
+	egsAppsDir := camino.GetAbs(data.EgsApps)
 
 	if err := originHasFreeSpace(appName, egsAppsDir, ii, originData); err != nil {
 		return err
@@ -1172,10 +1172,10 @@ func egsResetConnection() error {
 	egrc := nod.Begin("resetting EGS connection...")
 	defer egrc.Done()
 
-	cookiesDir := data.Pwd.AbsRelDirPath(data.Cookies, data.Metadata)
+	cookiesDir := camino.GetRel(data.Cookies, data.Metadata)
 	egsCookiePath := filepath.Join(cookiesDir, egsCookiesFilename)
 
-	tokensDir := data.Pwd.AbsRelDirPath(data.Tokens, data.Metadata)
+	tokensDir := camino.GetRel(data.Tokens, data.Metadata)
 	kvTokens, err := kevlar.New(tokensDir, kevlar.JsonExt)
 	if err != nil {
 		return err
@@ -1201,7 +1201,7 @@ func egsDownloadChunks(appName string, ii *InstallInfo, originData *data.OriginD
 	edca := nod.NewProgress("downloading EGS chunks...")
 	edca.Done()
 
-	downloadsDir := data.Pwd.AbsDirPath(data.Downloads)
+	downloadsDir := camino.GetAbs(data.Downloads)
 
 	if err := originHasFreeSpace(appName, downloadsDir, ii, originData); err != nil {
 		return err

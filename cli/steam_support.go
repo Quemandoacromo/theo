@@ -16,9 +16,9 @@ import (
 	"github.com/arelate/southern_light/steamcmd"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/kevlar"
 	"github.com/boggydigital/nod"
-	"github.com/boggydigital/pathways"
 	"github.com/boggydigital/redux"
 )
 
@@ -28,7 +28,7 @@ const (
 
 func steamGetAppInfoKv(steamAppId string, rdx redux.Writeable, force bool) (steam_vdf.ValveDataFile, error) {
 
-	steamAppInfoDir := data.Pwd.AbsRelDirPath(data.SteamAppInfo, data.Metadata)
+	steamAppInfoDir := camino.GetRel(data.SteamAppInfo, data.Metadata)
 
 	kvSteamAppInfo, err := kevlar.New(steamAppInfoDir, steam_vdf.Ext)
 	if err != nil {
@@ -117,7 +117,7 @@ func steamUpdateApp(steamAppId string, operatingSystem vangogh_integration.Opera
 	}
 
 	if _, err = os.Stat(steamAppInstallDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(steamAppInstallDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(steamAppInstallDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}
@@ -155,7 +155,7 @@ func steamValidateApp(steamAppId string, operatingSystem vangogh_integration.Ope
 	}
 
 	if _, err = os.Stat(steamAppInstallDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(steamAppInstallDir, pathways.PermUrwGrwOr); err != nil {
+		if err = os.MkdirAll(steamAppInstallDir, camino.DefaultFileMode); err != nil {
 			return err
 		}
 	}
@@ -442,7 +442,7 @@ func steamResetConnection(rdx redux.Writeable) error {
 }
 
 func steamDownloadData(steamAppId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable) error {
-	steamAppsDir := data.Pwd.AbsDirPath(data.SteamApps)
+	steamAppsDir := camino.GetAbs(data.SteamApps)
 
 	if err := originHasFreeSpace(steamAppId, steamAppsDir, ii, originData); err != nil {
 		return err

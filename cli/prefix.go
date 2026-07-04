@@ -14,6 +14,7 @@ import (
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/southern_light/wine_integration"
 	"github.com/arelate/theo/data"
+	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
 )
@@ -142,7 +143,7 @@ func prefixInstallBinary(id string, wineBinary string, absPrefixDir string, et *
 	wbFilename := path.Base(requestedWineBinary.DownloadUrl)
 
 	var wineDownloadsDir string
-	wineDownloadsDir = data.Pwd.AbsRelDirPath(data.BinDownloads, data.Wine)
+	wineDownloadsDir = camino.GetRel(data.BinDownloads, data.Wine)
 
 	et.title = requestedWineBinary.String()
 	et.exe = filepath.Join(wineDownloadsDir, wbFilename)
