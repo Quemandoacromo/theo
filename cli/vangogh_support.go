@@ -29,40 +29,20 @@ import (
 
 func vangoghGetProductDetails(id string, rdx redux.Writeable, force bool) (*vangogh_integration.ProductDetails, error) {
 
-	gpda := nod.NewProgress(" getting vangogh product details for %s...", id)
-	defer gpda.Done()
-
 	productDetailsDir := camino.GetRel(data.ProductDetails, data.Metadata)
-
 	kvProductDetails, err := kevlar.New(productDetailsDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
 	}
 
-	var pd *vangogh_integration.ProductDetails
-	if pd, err = vangoghReadLocalProductDetails(id, kvProductDetails); err != nil {
-		return nil, err
-	} else if pd != nil && !force {
-		gpda.EndWithResult("read local")
-		return pd, nil
+	if !kvProductDetails.Has(id) || force {
+
+		if err = vangoghFetchRemoteProductDetails(id, kvProductDetails, rdx); err != nil {
+			return nil, err
+		}
 	}
 
-	if err = vangoghValidateSessionToken(rdx); err != nil {
-		return nil, err
-	}
-
-	productDetails, err := vangoghFetchRemoteProductDetails(id, rdx, kvProductDetails)
-	if err != nil {
-		return nil, err
-	}
-
-	gpda.EndWithResult("fetched remote")
-
-	if err = vangoghReduceProductDetails(id, productDetails, rdx); err != nil {
-		return nil, err
-	}
-
-	return productDetails, nil
+	return vangoghReadLocalProductDetails(id, kvProductDetails)
 }
 
 func vangoghReadLocalProductDetails(id string, kvProductDetails kevlar.KeyValues) (*vangogh_integration.ProductDetails, error) {
@@ -85,10 +65,14 @@ func vangoghReadLocalProductDetails(id string, kvProductDetails kevlar.KeyValues
 	return &productDetails, nil
 }
 
-func vangoghFetchRemoteProductDetails(id string, rdx redux.Readable, kvProductDetails kevlar.KeyValues) (*vangogh_integration.ProductDetails, error) {
+func vangoghFetchRemoteProductDetails(id string, kvProductDetails kevlar.KeyValues, rdx redux.Writeable) error {
 
-	fra := nod.Begin(" fetching vangogh product details from the origin for %s...", id)
+	fra := nod.Begin(" fetching vangogh product details %s...", id)
 	defer fra.Done()
+
+	if err := vangoghValidateSessionToken(rdx); err != nil {
+		return err
+	}
 
 	query := url.Values{
 		vangogh_integration.UrlIdParameter: {id},
@@ -96,17 +80,17 @@ func vangoghFetchRemoteProductDetails(id string, rdx redux.Readable, kvProductDe
 
 	req, err := data.VangoghApiRequest(http.MethodGet, data.ApiProductDetailsPath, query, rdx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, errors.New("error fetching product details: " + resp.Status)
+		return errors.New("error fetching product details: " + resp.Status)
 	}
 
 	var bts []byte
@@ -114,21 +98,29 @@ func vangoghFetchRemoteProductDetails(id string, rdx redux.Readable, kvProductDe
 	tr := io.TeeReader(resp.Body, buf)
 
 	if err = kvProductDetails.Set(id, tr); err != nil {
-		return nil, err
+		return err
 	}
 
-	var productDetails vangogh_integration.ProductDetails
-	if err = json.UnmarshalRead(buf, &productDetails); err != nil {
-		return nil, err
-	}
+	return vangoghReduceProductDetails(id, kvProductDetails, rdx)
 
-	return &productDetails, nil
 }
 
-func vangoghReduceProductDetails(id string, productDetails *vangogh_integration.ProductDetails, rdx redux.Writeable) error {
+func vangoghReduceProductDetails(id string, kvProductDetails kevlar.KeyValues, rdx redux.Writeable) error {
 
 	rpda := nod.Begin(" reducing vangogh product details...")
 	defer rpda.Done()
+
+	rcProductDetails, err := kvProductDetails.Get(id)
+	if err != nil {
+		return err
+	}
+
+	defer rcProductDetails.Close()
+
+	var productDetails *vangogh_integration.ProductDetails
+	if err = json.UnmarshalRead(rcProductDetails, &productDetails); err != nil {
+		return err
+	}
 
 	propertyValues := make(map[string][]string)
 
@@ -193,7 +185,7 @@ func vangoghReduceProductDetails(id string, productDetails *vangogh_integration.
 	}
 
 	for property, values := range propertyValues {
-		if err := rdx.ReplaceValues(property, id, values...); err != nil {
+		if err = rdx.ReplaceValues(property, id, values...); err != nil {
 			return err
 		}
 	}
