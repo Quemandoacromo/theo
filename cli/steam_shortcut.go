@@ -468,7 +468,9 @@ func getSteamLoginUsers() ([]string, error) {
 
 	absLoginUsersPath := filepath.Join(udhd, "Steam", "config", loginUsersFilename)
 
-	if _, err = os.Stat(absLoginUsersPath); err != nil {
+	if _, err = os.Stat(absLoginUsersPath); os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 
