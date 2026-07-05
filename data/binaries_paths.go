@@ -11,7 +11,7 @@ import (
 	"github.com/boggydigital/redux"
 )
 
-const umuRunBinaryFn = "umu-run"
+const umuRunBinaryFn = "umu/umu-run"
 
 func UmuRunLatestReleasePath(rdx redux.Readable) (string, error) {
 	return githubLatestReleasePath(umuRunBinaryFn, wine_integration.UmuLauncher, rdx)
