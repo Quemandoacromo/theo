@@ -125,7 +125,7 @@ func listAvailableProducts(ii *InstallInfo, update bool) error {
 		return err
 	}
 
-	fetchAvailable := update || ii.force
+	updateAvailable := update || ii.force
 
 	if ii.Origin == data.UnknownOrigin {
 		ii.Origin = data.VangoghOrigin
@@ -133,12 +133,12 @@ func listAvailableProducts(ii *InstallInfo, update bool) error {
 
 	switch ii.Origin {
 	case data.VangoghOrigin:
-		if availableProducts, err = vangoghGetAvailableProducts(fetchAvailable); err != nil {
+		if availableProducts, err = vangoghGetAvailableProducts(rdx, updateAvailable); err != nil {
 			return err
 		}
 	case data.EpicGamesOrigin:
 		var osGameAssets map[vangogh_integration.OperatingSystem][]egs_integration.GameAsset
-		osGameAssets, err = egsGetGameAssets(fetchAvailable)
+		osGameAssets, err = egsGetGameAssets(updateAvailable)
 		if err != nil {
 			return err
 		}

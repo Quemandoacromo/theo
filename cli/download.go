@@ -92,10 +92,10 @@ func originGetData(id string, ii *InstallInfo, rdx redux.Writeable, force bool) 
 
 	switch ii.Origin {
 	case data.VangoghOrigin:
-		if originData.GogDetails, err = getGogDetails(id, rdx, force); err != nil {
+		if originData.GogDetails, err = vangoghGetGogDetails(id, rdx, force); err != nil {
 			return nil, err
 		}
-		if originData.GogFilenames, err = getGogFilenames(id, rdx, force); err != nil {
+		if originData.GogFilenames, err = vangoghGetGogFilenames(id, rdx, force); err != nil {
 			return nil, err
 		}
 	case data.SteamOrigin:

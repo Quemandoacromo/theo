@@ -14,6 +14,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/steam_grid"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
@@ -24,74 +25,6 @@ import (
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
 )
-
-func vangoghGetAvailableProducts(force bool) ([]vangogh_integration.AvailableProduct, error) {
-
-	vlapa := nod.Begin("getting available vangogh products...")
-	defer vlapa.Done()
-
-	availableProductsDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.AvailableProducts)
-
-	kvAvailableProducts, err := kevlar.New(availableProductsDir, kevlar.JsonExt)
-	if err != nil {
-		return nil, err
-	}
-
-	vangoghApKey := originAvailableProductsKey(data.VangoghOrigin, vangogh_integration.AnyOperatingSystem)
-
-	if !kvAvailableProducts.Has(vangoghApKey) || force {
-		if err = vangoghFetchAvailableProducts(kvAvailableProducts); err != nil {
-			return nil, err
-		}
-	}
-
-	rcAvailableProducts, err := kvAvailableProducts.Get(vangoghApKey)
-	if err != nil {
-		return nil, err
-	}
-	defer rcAvailableProducts.Close()
-
-	var availableProducts []vangogh_integration.AvailableProduct
-	if err = json.UnmarshalRead(rcAvailableProducts, &availableProducts); err != nil {
-		return nil, err
-	}
-
-	return availableProducts, nil
-}
-
-func vangoghFetchAvailableProducts(kvAvailableProducts kevlar.KeyValues) error {
-
-	vgapa := nod.Begin(" fetching vangogh available products...")
-	defer vgapa.Done()
-
-	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.VangoghProperties()...)
-	if err != nil {
-		return err
-	}
-
-	if err = vangoghValidateSessionToken(rdx); err != nil {
-		return err
-	}
-
-	req, err := data.VangoghApiRequest(http.MethodGet, data.ApiAvailableProductsPath, nil, rdx)
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return errors.New("error fetching available products: " + resp.Status)
-	}
-
-	vangoghApKey := originAvailableProductsKey(data.VangoghOrigin, vangogh_integration.AnyOperatingSystem)
-
-	return kvAvailableProducts.Set(vangoghApKey, resp.Body)
-}
 
 func vangoghDownloadsListSize(downloadsList vangogh_integration.DownloadsList, ii *InstallInfo, manualUrlFilter ...string) int64 {
 	var totalEstimatedBytes int64
@@ -779,7 +712,7 @@ func vangoghValidateData(id string, ii *InstallInfo, originData *data.OriginData
 	defer va.Done()
 
 	// always request new manual-url-checksums to avoid potentially reusing existing stale data
-	manualUrlChecksums, err := getGogChecksums(id, rdx, true)
+	manualUrlChecksums, err := vangoghGetGogChecksums(id, rdx, true)
 	if err != nil {
 		return err
 	}
@@ -913,4 +846,129 @@ func vangoghValidateLink(id string, localFilename string, manualUrlMd5 string, d
 		dla.EndWithResult(ValResMismatch)
 		return ValResMismatch, nil
 	}
+}
+
+func vangoghGetGogChecksums(id string, rdx redux.Writeable, force bool) (map[string]string, error) {
+	rcGogChecksums, err := getProductType(id, vangogh_integration.GogChecksums, rdx, force)
+	if err != nil {
+		return nil, err
+	}
+	defer rcGogChecksums.Close()
+
+	var gogChecksums map[string]string
+	if err = json.UnmarshalRead(rcGogChecksums, &gogChecksums); err != nil {
+		return nil, err
+	}
+
+	return gogChecksums, nil
+}
+
+func vangoghGetGogFilenames(id string, rdx redux.Writeable, force bool) (map[string]string, error) {
+	rcGogFilenames, err := getProductType(id, vangogh_integration.GogFilenames, rdx, force)
+	if err != nil {
+		return nil, err
+	}
+	defer rcGogFilenames.Close()
+
+	var gogFilenames map[string]string
+	if err = json.UnmarshalRead(rcGogFilenames, &gogFilenames); err != nil {
+		return nil, err
+	}
+
+	return gogFilenames, nil
+}
+
+func vangoghGetGogImages(id string, rdx redux.Writeable, force bool) (map[string][]string, error) {
+	rcGogImages, err := getProductType(id, vangogh_integration.GogImages, rdx, force)
+	if err != nil {
+		return nil, err
+	}
+	defer rcGogImages.Close()
+
+	var gogImages map[string][]string
+	if err = json.UnmarshalRead(rcGogImages, &gogImages); err != nil {
+		return nil, err
+	}
+
+	return gogImages, nil
+}
+
+func vangoghGetGogDetails(id string, rdx redux.Writeable, force bool) (*gog_integration.Details, error) {
+	rcDetails, err := getProductType(id, vangogh_integration.GogDetails, rdx, force)
+	if err != nil {
+		return nil, err
+	}
+	defer rcDetails.Close()
+
+	return vangogh_integration.UnmarshalDetailsReadCloser(rcDetails)
+}
+
+func vangoghReduceGogDetails(id string, kvGogDetails kevlar.KeyValues, rdx redux.Writeable) error {
+
+	rcGogDetails, err := kvGogDetails.Get(id)
+	if err != nil {
+		return err
+	}
+
+	defer rcGogDetails.Close()
+
+	det, err := vangogh_integration.UnmarshalDetails(id, kvGogDetails)
+	if err != nil {
+		return err
+	}
+
+	propertyValues := make(map[string][]string)
+
+	reductionProperties := []string{
+		vangogh_integration.GogTitleProperty,
+		vangogh_integration.GogOperatingSystemsProperty,
+	}
+
+	for _, property := range reductionProperties {
+
+		var values []string
+
+		switch property {
+		case vangogh_integration.GogTitleProperty:
+			values = []string{det.GetTitle()}
+		case vangogh_integration.GogOperatingSystemsProperty:
+			values, err = det.GetOperatingSystems()
+			if err != nil {
+				return err
+			}
+		}
+
+		if len(values) == 1 && values[0] == "" {
+			values = nil
+		}
+
+		if len(values) > 0 {
+			propertyValues[property] = values
+		}
+	}
+
+	for property, values := range propertyValues {
+		if err = rdx.ReplaceValues(property, id, values...); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func vangoghGetAvailableProducts(rdx redux.Writeable, force bool) ([]vangogh_integration.AvailableProduct, error) {
+
+	rcAvailableProducts, err := getProductType("", vangogh_integration.AvailableProducts, rdx, force)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rcAvailableProducts.Close()
+
+	var availableProducts []vangogh_integration.AvailableProduct
+	if err = json.UnmarshalRead(rcAvailableProducts, &availableProducts); err != nil {
+		return nil, err
+	}
+
+	return availableProducts, nil
 }

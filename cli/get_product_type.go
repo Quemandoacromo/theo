@@ -1,14 +1,12 @@
 package cli
 
 import (
-	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"path"
 
-	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
 	"github.com/boggydigital/kevlar"
@@ -30,6 +28,8 @@ func productTypeRequest(id string, pt vangogh_integration.ProductType, rdx redux
 	case vangogh_integration.GogDetails:
 		apiMetadataGogDetailsPath := path.Join(data.ApiMetadataPath, pt.String(), id)
 		return data.VangoghApiRequest(http.MethodGet, apiMetadataGogDetailsPath, nil, rdx)
+	case vangogh_integration.AvailableProducts:
+		return data.VangoghApiRequest(http.MethodGet, data.ApiAvailableProductsPath, nil, rdx)
 	default:
 		return nil, errors.New("http request not supported for " + pt.String())
 	}
@@ -104,122 +104,16 @@ func reduceProductType(id string, pt vangogh_integration.ProductType, rdx redux.
 
 	switch pt {
 	case vangogh_integration.GogDetails:
-		return reduceGogDetails(id, kvPt, rdx)
+		return vangoghReduceGogDetails(id, kvPt, rdx)
 	case vangogh_integration.GogChecksums:
 		fallthrough
 	case vangogh_integration.GogFilenames:
 		fallthrough
 	case vangogh_integration.GogImages:
+		fallthrough
+	case vangogh_integration.AvailableProducts:
 		return nil
 	default:
 		return errors.New("reduction not supported for " + pt.String())
 	}
-}
-
-func getGogChecksums(id string, rdx redux.Writeable, force bool) (map[string]string, error) {
-	rcGogChecksums, err := getProductType(id, vangogh_integration.GogChecksums, rdx, force)
-	if err != nil {
-		return nil, err
-	}
-	defer rcGogChecksums.Close()
-
-	var gogChecksums map[string]string
-	if err = json.UnmarshalRead(rcGogChecksums, &gogChecksums); err != nil {
-		return nil, err
-	}
-
-	return gogChecksums, nil
-}
-
-func getGogFilenames(id string, rdx redux.Writeable, force bool) (map[string]string, error) {
-	rcGogFilenames, err := getProductType(id, vangogh_integration.GogFilenames, rdx, force)
-	if err != nil {
-		return nil, err
-	}
-	defer rcGogFilenames.Close()
-
-	var gogFilenames map[string]string
-	if err = json.UnmarshalRead(rcGogFilenames, &gogFilenames); err != nil {
-		return nil, err
-	}
-
-	return gogFilenames, nil
-}
-
-func getGogImages(id string, rdx redux.Writeable, force bool) (map[string][]string, error) {
-	rcGogImages, err := getProductType(id, vangogh_integration.GogImages, rdx, force)
-	if err != nil {
-		return nil, err
-	}
-	defer rcGogImages.Close()
-
-	var gogImages map[string][]string
-	if err = json.UnmarshalRead(rcGogImages, &gogImages); err != nil {
-		return nil, err
-	}
-
-	return gogImages, nil
-}
-
-func getGogDetails(id string, rdx redux.Writeable, force bool) (*gog_integration.Details, error) {
-	rcDetails, err := getProductType(id, vangogh_integration.GogDetails, rdx, force)
-	if err != nil {
-		return nil, err
-	}
-	defer rcDetails.Close()
-
-	return vangogh_integration.UnmarshalDetailsReadCloser(rcDetails)
-}
-
-func reduceGogDetails(id string, kvGogDetails kevlar.KeyValues, rdx redux.Writeable) error {
-
-	rcGogDetails, err := kvGogDetails.Get(id)
-	if err != nil {
-		return err
-	}
-
-	defer rcGogDetails.Close()
-
-	det, err := vangogh_integration.UnmarshalDetails(id, kvGogDetails)
-	if err != nil {
-		return err
-	}
-
-	propertyValues := make(map[string][]string)
-
-	reductionProperties := []string{
-		vangogh_integration.GogTitleProperty,
-		vangogh_integration.GogOperatingSystemsProperty,
-	}
-
-	for _, property := range reductionProperties {
-
-		var values []string
-
-		switch property {
-		case vangogh_integration.GogTitleProperty:
-			values = []string{det.GetTitle()}
-		case vangogh_integration.GogOperatingSystemsProperty:
-			values, err = det.GetOperatingSystems()
-			if err != nil {
-				return err
-			}
-		}
-
-		if len(values) == 1 && values[0] == "" {
-			values = nil
-		}
-
-		if len(values) > 0 {
-			propertyValues[property] = values
-		}
-	}
-
-	for property, values := range propertyValues {
-		if err = rdx.ReplaceValues(property, id, values...); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

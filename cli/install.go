@@ -176,7 +176,7 @@ func originAddSteamShortcut(id, forId string, ii *InstallInfo, originData *data.
 	switch ii.Origin {
 	case data.VangoghOrigin:
 		var gogImages map[string][]string
-		gogImages, err = getGogImages(id, rdx, false)
+		gogImages, err = vangoghGetGogImages(id, rdx, false)
 
 		if len(gogImages) > 0 {
 			pda, err = vangoghShortcutAssets(gogImages, rdx)
