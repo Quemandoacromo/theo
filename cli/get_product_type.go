@@ -22,12 +22,12 @@ func productTypeRequest(id string, pt vangogh_integration.ProductType, rdx redux
 	case vangogh_integration.GogFilenames:
 		apiGogFilenamesPath := path.Join(data.ApiGogFilenamesPath, id)
 		return data.VangoghApiRequest(http.MethodGet, apiGogFilenamesPath, nil, rdx)
-	case vangogh_integration.GogImages:
-		apiGogImagesPath := path.Join(data.ApiGogImagesPath)
-		return data.VangoghApiRequest(http.MethodGet, apiGogImagesPath, nil, rdx)
 	case vangogh_integration.GogDetails:
 		apiMetadataGogDetailsPath := path.Join(data.ApiMetadataPath, pt.String(), id)
 		return data.VangoghApiRequest(http.MethodGet, apiMetadataGogDetailsPath, nil, rdx)
+	case vangogh_integration.GogApiProducts:
+		apiMetadataGogApiProductPath := path.Join(data.ApiMetadataPath, pt.String(), id)
+		return data.VangoghApiRequest(http.MethodGet, apiMetadataGogApiProductPath, nil, rdx)
 	case vangogh_integration.AvailableProducts:
 		return data.VangoghApiRequest(http.MethodGet, data.ApiAvailableProductsPath, nil, rdx)
 	default:
@@ -109,7 +109,7 @@ func reduceProductType(id string, pt vangogh_integration.ProductType, rdx redux.
 		fallthrough
 	case vangogh_integration.GogFilenames:
 		fallthrough
-	case vangogh_integration.GogImages:
+	case vangogh_integration.GogApiProducts:
 		fallthrough
 	case vangogh_integration.AvailableProducts:
 		return nil

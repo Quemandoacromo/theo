@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/steam_grid"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
@@ -175,11 +176,16 @@ func originAddSteamShortcut(id, forId string, ii *InstallInfo, originData *data.
 
 	switch ii.Origin {
 	case data.VangoghOrigin:
-		var gogImages map[string][]string
-		gogImages, err = vangoghGetGogImages(id, rdx, false)
+		var gogApiProduct *gog_integration.ApiProduct
+		gogApiProduct, err = vangoghGetGogApiProduct(id, rdx, ii.force)
+		if err != nil {
+			return err
+		}
 
-		if len(gogImages) > 0 {
-			pda, err = vangoghShortcutAssets(gogImages, rdx)
+		gogAssets := vangoghApiProductShortcutAssets(gogApiProduct)
+
+		if len(gogAssets) > 0 {
+			pda, err = vangoghShortcutAssets(gogAssets, rdx)
 			if err != nil {
 				return err
 			}

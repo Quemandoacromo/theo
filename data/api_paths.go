@@ -5,7 +5,6 @@ const (
 	ApiAuthSessionPath      = "/api/auth-session"
 	ApiGogChecksumsPath     = "/api/gog-checksums"
 	ApiGogFilenamesPath     = "/api/gog-filenames"
-	ApiGogImagesPath        = "/api/gog-images"
 	ApiBinariesVersionsPath = "/api/binaries/versions"
 	ApiGogManualUrlPath     = "/api/gog-manual-url"
 	ApiBinaryPath           = "/api/binary"

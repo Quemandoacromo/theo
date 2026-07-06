@@ -62,39 +62,39 @@ func vangoghUninstallProduct(id string, ii *InstallInfo, rdx redux.Writeable) er
 	return removeInventoryFile(id, ii, rdx)
 }
 
-func vangoghShortcutAssets(gogImages map[string][]string, rdx redux.Readable) (map[steam_grid.Asset]*url.URL, error) {
+func vangoghShortcutAssets(gogAssets map[string]string, rdx redux.Readable) (map[steam_grid.Asset]*url.URL, error) {
 
 	shortcutAssets := make(map[steam_grid.Asset]*url.URL)
 
 	for _, asset := range steam_grid.ShortcutAssets {
 
-		var imageIds []string
+		var imageId string
 		switch asset {
 		case steam_grid.Header:
-			imageIds = gogImages[vangogh_integration.GogImageProperty]
+			imageId = gogAssets[vangogh_integration.GogImageProperty]
 		case steam_grid.LibraryCapsule:
-			imageIds = gogImages[vangogh_integration.GogVerticalImageProperty]
+			imageId = gogAssets[vangogh_integration.GogVerticalImageProperty]
 		case steam_grid.LibraryHero:
-			if heroImages := gogImages[vangogh_integration.GogHeroProperty]; len(heroImages) > 0 {
-				imageIds = heroImages
+			if heroImages := gogAssets[vangogh_integration.GogHeroProperty]; len(heroImages) > 0 {
+				imageId = heroImages
 			} else {
-				imageIds = gogImages[vangogh_integration.GogBackgroundProperty]
+				imageId = gogAssets[vangogh_integration.GogBackgroundProperty]
 			}
 		case steam_grid.LibraryLogo:
-			imageIds = gogImages[vangogh_integration.GogLogoProperty]
+			imageId = gogAssets[vangogh_integration.GogLogoProperty]
 		case steam_grid.ClientIcon:
-			if iconSquareImages := gogImages[vangogh_integration.GogIconSquareProperty]; len(iconSquareImages) > 0 {
-				imageIds = iconSquareImages
+			if iconSquareImages := gogAssets[vangogh_integration.GogIconSquareProperty]; len(iconSquareImages) > 0 {
+				imageId = iconSquareImages
 			} else {
-				imageIds = gogImages[vangogh_integration.GogIconProperty]
+				imageId = gogAssets[vangogh_integration.GogIconProperty]
 			}
 		default:
 			return nil, errors.New("unexpected shortcut asset " + asset.String())
 		}
 
-		if len(imageIds) > 0 {
+		if imageId != "" {
 
-			apiImagePath := path.Join(data.ApiGogImagePath, imageIds[0])
+			apiImagePath := path.Join(data.ApiGogImagePath, imageId)
 			vangoghImageUrl, err := data.VangoghUrl(apiImagePath, nil, rdx)
 			if err != nil {
 				return nil, err
@@ -878,21 +878,6 @@ func vangoghGetGogFilenames(id string, rdx redux.Writeable, force bool) (map[str
 	return gogFilenames, nil
 }
 
-func vangoghGetGogImages(id string, rdx redux.Writeable, force bool) (map[string][]string, error) {
-	rcGogImages, err := getProductType(id, vangogh_integration.GogImages, rdx, force)
-	if err != nil {
-		return nil, err
-	}
-	defer rcGogImages.Close()
-
-	var gogImages map[string][]string
-	if err = json.UnmarshalRead(rcGogImages, &gogImages); err != nil {
-		return nil, err
-	}
-
-	return gogImages, nil
-}
-
 func vangoghGetGogDetails(id string, rdx redux.Writeable, force bool) (*gog_integration.Details, error) {
 	rcDetails, err := getProductType(id, vangogh_integration.GogDetails, rdx, force)
 	if err != nil {
@@ -901,6 +886,21 @@ func vangoghGetGogDetails(id string, rdx redux.Writeable, force bool) (*gog_inte
 	defer rcDetails.Close()
 
 	return vangogh_integration.UnmarshalDetailsReadCloser(rcDetails)
+}
+
+func vangoghGetGogApiProduct(id string, rdx redux.Writeable, force bool) (*gog_integration.ApiProduct, error) {
+	rcApiProduct, err := getProductType(id, vangogh_integration.GogApiProducts, rdx, force)
+	if err != nil {
+		return nil, err
+	}
+	defer rcApiProduct.Close()
+
+	var apiProduct gog_integration.ApiProduct
+	if err = json.UnmarshalRead(rcApiProduct, &apiProduct); err != nil {
+		return nil, err
+	}
+
+	return &apiProduct, nil
 }
 
 func vangoghReduceGogDetails(id string, kvGogDetails kevlar.KeyValues, rdx redux.Writeable) error {
@@ -971,4 +971,54 @@ func vangoghGetAvailableProducts(rdx redux.Writeable, force bool) ([]vangogh_int
 	}
 
 	return availableProducts, nil
+}
+
+func vangoghApiProductShortcutAssets(apiProduct *gog_integration.ApiProduct) map[string]string {
+
+	gogAssets := make(map[string]string)
+
+	if apiProduct == nil {
+		return gogAssets
+	}
+
+	assetImageTypes := []gog_integration.ImageType{
+		gog_integration.Image,
+		gog_integration.VerticalImage,
+		gog_integration.Hero,
+		gog_integration.Background,
+		gog_integration.Logo,
+		gog_integration.Icon,
+		gog_integration.IconSquare,
+	}
+
+	for _, it := range assetImageTypes {
+
+		var getImage func() string
+
+		switch it {
+		case gog_integration.Image:
+			getImage = apiProduct.GetImage
+		case gog_integration.VerticalImage:
+			getImage = apiProduct.GetVerticalImage
+		case gog_integration.Hero:
+			getImage = apiProduct.GetHero
+		case gog_integration.Background:
+			getImage = apiProduct.GetBackground
+		case gog_integration.Logo:
+			getImage = apiProduct.GetLogo
+		case gog_integration.Icon:
+			getImage = apiProduct.GetIcon
+		case gog_integration.IconSquare:
+			getImage = apiProduct.GetIconSquare
+		default:
+			panic("unknown vangogh asset image type")
+		}
+
+		if getImage != nil {
+			itp := vangogh_integration.PropertyFromImageType(it)
+			gogAssets[itp] = gog_integration.ImageId(getImage())
+		}
+	}
+
+	return gogAssets
 }
