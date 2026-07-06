@@ -40,12 +40,7 @@ func getProductType(id string, pt vangogh_integration.ProductType, rdx redux.Wri
 	gpta := nod.Begin(" getting %s %s...", pt, id)
 	defer gpta.Done()
 
-	ptDir, err := vangogh_integration.AbsProductTypeDir(pt)
-	if err != nil {
-		return nil, err
-	}
-
-	kvPt, err := kevlar.New(ptDir, pt.Ext())
+	kvPt, err := kevlar.New(vangogh_integration.AbsProductTypeDir(pt), pt.Ext())
 	if err != nil {
 		return nil, err
 	}

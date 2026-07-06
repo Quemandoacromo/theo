@@ -28,10 +28,7 @@ const (
 
 func steamGetAppInfoKv(steamAppId string, rdx redux.Writeable, force bool) (steam_vdf.ValveDataFile, error) {
 
-	steamAppInfoDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.SteamAppInfo)
-	if err != nil {
-		return nil, err
-	}
+	steamAppInfoDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.SteamAppInfo)
 
 	kvSteamAppInfo, err := kevlar.New(steamAppInfoDir, steam_vdf.Ext)
 	if err != nil {

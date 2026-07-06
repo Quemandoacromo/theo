@@ -356,10 +356,7 @@ func egsReadLocalGameAssets(operatingSystem vangogh_integration.OperatingSystem)
 
 	egsOsApKey := originAvailableProductsKey(data.EpicGamesOrigin, operatingSystem)
 
-	availableProductsDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.AvailableProducts)
-	if err != nil {
-		return nil, err
-	}
+	availableProductsDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.AvailableProducts)
 
 	kvAvailableProducts, err := kevlar.New(availableProductsDir, kevlar.JsonExt)
 	if err != nil {
@@ -408,10 +405,7 @@ func egsFetchGameAssets(operatingSystem vangogh_integration.OperatingSystem) err
 
 	egsOsApKey := originAvailableProductsKey(data.EpicGamesOrigin, operatingSystem)
 
-	availableProductsDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.AvailableProducts)
-	if err != nil {
-		return err
-	}
+	availableProductsDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.AvailableProducts)
 
 	kvAvailableProducts, err := kevlar.New(availableProductsDir, kevlar.JsonExt)
 	if err != nil {
@@ -423,10 +417,7 @@ func egsFetchGameAssets(operatingSystem vangogh_integration.OperatingSystem) err
 
 func egsGetCatalogItem(gameAsset *egs_integration.GameAsset, ii *InstallInfo, rdx redux.Writeable) (*egs_integration.CatalogItem, error) {
 
-	catalogItemsDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.EgsCatalogItems)
-	if err != nil {
-		return nil, err
-	}
+	catalogItemsDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.EgsCatalogItems)
 
 	kvCatalogItems, err := kevlar.New(catalogItemsDir, kevlar.JsonExt)
 	if err != nil {
@@ -541,10 +532,7 @@ func egsGetGameManifest(gameAsset *egs_integration.GameAsset, ii *InstallInfo, f
 	eggma := nod.Begin("getting EGS game manifest...")
 	defer eggma.Done()
 
-	gameManifestsDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.EgsGameManifests)
-	if err != nil {
-		return nil, err
-	}
+	gameManifestsDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.EgsGameManifests)
 
 	kvGameManifests, err := kevlar.New(gameManifestsDir, kevlar.JsonExt)
 	if err != nil {
@@ -608,10 +596,7 @@ func egsGetManifest(appName string, gameManifest *egs_integration.GameManifest, 
 	egma := nod.Begin("getting EGS manifest...")
 	defer egma.Done()
 
-	manifestsDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.EgsManifests)
-	if err != nil {
-		return nil, err
-	}
+	manifestsDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.EgsManifests)
 
 	kvManifests, err := kevlar.New(manifestsDir, egs_integration.ManifestExt)
 	if err != nil {

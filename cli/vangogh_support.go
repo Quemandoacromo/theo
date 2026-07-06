@@ -30,10 +30,7 @@ func vangoghGetAvailableProducts(force bool) ([]vangogh_integration.AvailablePro
 	vlapa := nod.Begin("getting available vangogh products...")
 	defer vlapa.Done()
 
-	availableProductsDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.AvailableProducts)
-	if err != nil {
-		return nil, err
-	}
+	availableProductsDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.AvailableProducts)
 
 	kvAvailableProducts, err := kevlar.New(availableProductsDir, kevlar.JsonExt)
 	if err != nil {
