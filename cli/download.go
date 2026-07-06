@@ -92,19 +92,12 @@ func originGetData(id string, ii *InstallInfo, rdx redux.Writeable, force bool) 
 
 	switch ii.Origin {
 	case data.VangoghOrigin:
-		//var det *gog_integration.Details
 		if originData.GogDetails, err = getGogDetails(id, rdx, force); err != nil {
 			return nil, err
 		}
-
-		//if originData.GogDownloadsList, err = vangogh_integration.FromDetails(det); err != nil {
-		//	return nil, err
-		//}
-
 		if originData.GogFilenames, err = getGogFilenames(id, rdx, force); err != nil {
 			return nil, err
 		}
-
 	case data.SteamOrigin:
 		if originData.AppInfoKv, err = steamGetAppInfoKv(id, rdx, force); err != nil {
 			return nil, err
