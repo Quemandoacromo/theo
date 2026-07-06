@@ -22,7 +22,7 @@ func PresetLaunchOptionsHandler(u *url.URL) error {
 		LangCode:        q.Get(vangogh_integration.UrlLanguageCodeParameter),
 	})
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}

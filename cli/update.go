@@ -38,7 +38,7 @@ func Update(id string, all, verbose, force bool) error {
 	ua := nod.NewProgress(updateMsg)
 	defer ua.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}

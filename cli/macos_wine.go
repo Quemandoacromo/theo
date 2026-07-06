@@ -80,9 +80,8 @@ func macOsWineExecTask(id string, et *execTask) error {
 func macOsGetAbsCxBinDir(rdx redux.Readable) (string, error) {
 
 	if rdx == nil {
-		reduxDir := camino.GetRel(data.Redux, data.Metadata)
 		var err error
-		rdx, err = redux.NewReader(reduxDir, data.WineBinariesVersionsProperty)
+		rdx, err = redux.NewReader(vangogh_integration.AbsReduxDir(), data.WineBinariesVersionsProperty)
 		if err != nil {
 			return "", err
 		}
@@ -101,7 +100,7 @@ func macOsGetAbsCxBinDir(rdx redux.Readable) (string, error) {
 		return "", errors.New("CrossOver version not found, please run setup-wine")
 	}
 
-	binariesRuntimesDir := camino.GetRel(data.Runtimes, data.Binaries)
+	binariesRuntimesDir := camino.GetRel(vangogh_integration.Runtimes, vangogh_integration.Binaries)
 
 	absCrossOverBinDir := filepath.Join(binariesRuntimesDir, camino.Sanitize(wine_integration.CrossOver), latestCxVersion, relCxAppDir, relCxBinDir)
 	if _, err := os.Stat(absCrossOverBinDir); err == nil {

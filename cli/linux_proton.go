@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/southern_light/wine_integration"
 	"github.com/arelate/theo/data"
 	"github.com/boggydigital/camino"
@@ -37,8 +38,7 @@ func linuxProtonExecTask(id string, et *execTask) error {
 		poa.EndWithResult(strings.Join(et.protonOptions, " "))
 	}
 
-	reduxDir := camino.GetRel(data.Redux, data.Metadata)
-	rdx, err := redux.NewReader(reduxDir, data.WineBinariesVersionsProperty)
+	rdx, err := redux.NewReader(vangogh_integration.AbsReduxDir(), data.WineBinariesVersionsProperty)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func linuxProtonRuntimePath(et *execTask, rdx redux.Readable) (string, error) {
 
 	if et.steamProtonRuntime != "" {
 
-		udhd, err := data.UserDataHomeDir()
+		udhd, err := vangogh_integration.UserDataHomeDir()
 		if err != nil {
 			return "", err
 		}

@@ -54,7 +54,7 @@ func hasFreeSpaceForBytes(path string, bytes int64) (bool, error) {
 	hfsa := nod.Begin("checking free space at %s...", filepath.Base(path))
 	defer hfsa.Done()
 
-	currentOs := data.CurrentOs()
+	currentOs := vangogh_integration.CurrentOs()
 
 	var availableBytes int64
 	var err error

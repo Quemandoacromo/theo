@@ -47,7 +47,7 @@ func Fix(id string, ii *InstallInfo, fx *fixes, reset bool) error {
 	sfa := nod.Begin("applying fixes...")
 	defer sfa.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}

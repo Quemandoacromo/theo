@@ -34,13 +34,13 @@ func prefixInit(id string, origin data.Origin, rdx redux.Readable, verbose bool)
 		return err
 	}
 
-	switch data.CurrentOs() {
+	switch vangogh_integration.CurrentOs() {
 	case vangogh_integration.MacOS:
 		return macOsInitPrefix(absPrefixDir, verbose)
 	case vangogh_integration.Linux:
 		return linuxInitPrefix(absPrefixDir, verbose)
 	default:
-		return data.CurrentOs().ErrUnsupported()
+		return vangogh_integration.CurrentOs().ErrUnsupported()
 	}
 }
 
@@ -57,7 +57,7 @@ func prefixRunInstallers(id string, ii *InstallInfo, localFilenames []string, rd
 	puia := nod.Begin(" running %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer puia.Done()
 
-	downloadsDir := camino.GetAbs(data.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 
 	absPrefixDir, err := data.AbsPrefixDir(id, ii.Origin, rdx)
 	if err != nil {
@@ -96,7 +96,7 @@ func prefixRunInstallers(id string, ii *InstallInfo, localFilenames []string, rd
 			verbose: ii.verbose,
 		}
 
-		switch data.CurrentOs() {
+		switch vangogh_integration.CurrentOs() {
 		case vangogh_integration.MacOS:
 			if err = macOsWineExecTask(id, et); err != nil {
 				return err
@@ -106,7 +106,7 @@ func prefixRunInstallers(id string, ii *InstallInfo, localFilenames []string, rd
 				return err
 			}
 		default:
-			return data.CurrentOs().ErrUnsupported()
+			return vangogh_integration.CurrentOs().ErrUnsupported()
 		}
 	}
 

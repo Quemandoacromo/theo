@@ -17,7 +17,7 @@ const (
 
 func Migrate() error {
 
-	kvRdx, err := kevlar.New(data.AbsReduxDir(), kevlar.GobExt)
+	kvRdx, err := kevlar.New(vangogh_integration.AbsReduxDir(), kevlar.GobExt)
 	if err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func Migrate() error {
 		return nil
 	}
 
-	oldRdx, err := redux.NewReader(data.AbsReduxDir(),
+	oldRdx, err := redux.NewReader(vangogh_integration.AbsReduxDir(),
 		oldTitleProperty,
 		oldBundleNameProperty,
 		oldRequiresGamesProperty,
@@ -36,7 +36,7 @@ func Migrate() error {
 		return err
 	}
 
-	newRdx, err := redux.NewWriter(data.AbsReduxDir(),
+	newRdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(),
 		vangogh_integration.GogTitleProperty,
 		vangogh_integration.SteamTitleProperty,
 		vangogh_integration.EgsTitleProperty,
@@ -102,7 +102,7 @@ func Migrate() error {
 	}
 
 	// read again
-	kvRdx, err = kevlar.New(data.AbsReduxDir(), kevlar.GobExt)
+	kvRdx, err = kevlar.New(vangogh_integration.AbsReduxDir(), kevlar.GobExt)
 	if err != nil {
 		return err
 	}

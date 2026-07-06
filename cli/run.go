@@ -96,7 +96,7 @@ func Run(id string, request *InstallInfo, et *execTask) error {
 	ra := nod.NewProgress("running product %s...", id)
 	defer ra.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -260,10 +260,10 @@ func originGetExecTask(id string, ii *InstallInfo, originData *data.OriginData, 
 }
 
 func osConfirmRunnability(operatingSystem vangogh_integration.OperatingSystem) error {
-	if operatingSystem == vangogh_integration.MacOS && data.CurrentOs() != vangogh_integration.MacOS {
+	if operatingSystem == vangogh_integration.MacOS && vangogh_integration.CurrentOs() != vangogh_integration.MacOS {
 		return errors.New("running macOS versions is only supported on macOS")
 	}
-	if operatingSystem == vangogh_integration.Linux && data.CurrentOs() != vangogh_integration.Linux {
+	if operatingSystem == vangogh_integration.Linux && vangogh_integration.CurrentOs() != vangogh_integration.Linux {
 		return errors.New("running Linux versions is only supported on Linux")
 	}
 	return nil
@@ -280,7 +280,7 @@ func osFindGogGameInfo(id string, ii *InstallInfo, rdx redux.Readable) (string, 
 	case vangogh_integration.Linux:
 		gogGameInfoPath, err = linuxFindGogGameInfo(id, ii, rdx)
 	case vangogh_integration.Windows:
-		currentOs := data.CurrentOs()
+		currentOs := vangogh_integration.CurrentOs()
 		switch currentOs {
 		case vangogh_integration.MacOS:
 			fallthrough
@@ -318,7 +318,7 @@ func osExecTaskGogGameInfo(absGogGameInfoPath string, operatingSystem vangogh_in
 	case vangogh_integration.Linux:
 		return linuxExecTaskGogGameInfo(absGogGameInfoPath, gogGameInfo, et)
 	case vangogh_integration.Windows:
-		currentOs := data.CurrentOs()
+		currentOs := vangogh_integration.CurrentOs()
 		switch currentOs {
 		case vangogh_integration.MacOS:
 			return macOsExecTaskGogGameInfo(absGogGameInfoPath, gogGameInfo, et)
@@ -343,7 +343,7 @@ func osFindDefaultLauncher(id string, ii *InstallInfo, rdx redux.Readable) (stri
 	case vangogh_integration.Linux:
 		defaultLauncherPath, err = linuxFindStartSh(id, ii, rdx)
 	case vangogh_integration.Windows:
-		currentOs := data.CurrentOs()
+		currentOs := vangogh_integration.CurrentOs()
 		switch currentOs {
 		case vangogh_integration.MacOS:
 			fallthrough
@@ -378,7 +378,7 @@ func osExecTaskDefaultLauncher(absDefaultLauncherPath string, operatingSystem va
 	case vangogh_integration.Linux:
 		return linuxExecTaskStartSh(absDefaultLauncherPath, et)
 	case vangogh_integration.Windows:
-		currentOs := data.CurrentOs()
+		currentOs := vangogh_integration.CurrentOs()
 		switch currentOs {
 		case vangogh_integration.MacOS:
 			fallthrough
@@ -402,7 +402,7 @@ func osExec(id string, operatingSystem vangogh_integration.OperatingSystem, et *
 	case vangogh_integration.Linux:
 		return nixRunExecTask(et)
 	case vangogh_integration.Windows:
-		currentOs := data.CurrentOs()
+		currentOs := vangogh_integration.CurrentOs()
 		switch currentOs {
 		case vangogh_integration.MacOS:
 			return macOsWineExecTask(id, et)

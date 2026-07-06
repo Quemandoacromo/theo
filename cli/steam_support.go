@@ -28,7 +28,10 @@ const (
 
 func steamGetAppInfoKv(steamAppId string, rdx redux.Writeable, force bool) (steam_vdf.ValveDataFile, error) {
 
-	steamAppInfoDir := camino.GetRel(data.SteamAppInfo, data.Metadata)
+	steamAppInfoDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.SteamAppInfo)
+	if err != nil {
+		return nil, err
+	}
 
 	kvSteamAppInfo, err := kevlar.New(steamAppInfoDir, steam_vdf.Ext)
 	if err != nil {
@@ -58,7 +61,7 @@ func steamFetchAppInfo(steamAppId string, kvSteamAppInfo kevlar.KeyValues, rdx r
 		return nil
 	}
 
-	absSteamCmdPath, err := data.AbsSteamCmdBinPath(data.CurrentOs())
+	absSteamCmdPath, err := data.AbsSteamCmdBinPath(vangogh_integration.CurrentOs())
 	if err != nil {
 		return err
 	}
@@ -122,7 +125,7 @@ func steamUpdateApp(steamAppId string, operatingSystem vangogh_integration.Opera
 		}
 	}
 
-	absSteamCmdPath, err := data.AbsSteamCmdBinPath(data.CurrentOs())
+	absSteamCmdPath, err := data.AbsSteamCmdBinPath(vangogh_integration.CurrentOs())
 	if err != nil {
 		return err
 	}
@@ -160,7 +163,7 @@ func steamValidateApp(steamAppId string, operatingSystem vangogh_integration.Ope
 		}
 	}
 
-	absSteamCmdPath, err := data.AbsSteamCmdBinPath(data.CurrentOs())
+	absSteamCmdPath, err := data.AbsSteamCmdBinPath(vangogh_integration.CurrentOs())
 	if err != nil {
 		return err
 	}
@@ -417,7 +420,7 @@ func steamSetupConnection(username string, rdx redux.Writeable, reset bool) erro
 		}
 	}
 
-	absSteamCmdPath, err := data.AbsSteamCmdBinPath(data.CurrentOs())
+	absSteamCmdPath, err := data.AbsSteamCmdBinPath(vangogh_integration.CurrentOs())
 	if err != nil {
 		return err
 	}
@@ -433,7 +436,7 @@ func steamResetConnection(rdx redux.Writeable) error {
 		return err
 	}
 
-	absSteamCmdPath, err := data.AbsSteamCmdBinPath(data.CurrentOs())
+	absSteamCmdPath, err := data.AbsSteamCmdBinPath(vangogh_integration.CurrentOs())
 	if err != nil {
 		return err
 	}
@@ -442,7 +445,7 @@ func steamResetConnection(rdx redux.Writeable) error {
 }
 
 func steamDownloadData(steamAppId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Readable) error {
-	steamAppsDir := camino.GetRel(data.SteamApps, data.InstalledApps)
+	steamAppsDir := camino.GetRel(vangogh_integration.SteamApps, vangogh_integration.InstalledApps)
 
 	if err := originHasFreeSpace(steamAppId, steamAppsDir, ii, originData); err != nil {
 		return err

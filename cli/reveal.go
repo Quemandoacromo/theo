@@ -78,7 +78,7 @@ func revealInstalled(id string, request *InstallInfo) error {
 	ria := nod.Begin("revealing installation for %s...", id)
 	defer ria.Done()
 
-	rdx, err := redux.NewReader(data.AbsReduxDir(),
+	rdx, err := redux.NewReader(vangogh_integration.AbsReduxDir(),
 		vangogh_integration.GogTitleProperty,
 		vangogh_integration.SteamTitleProperty,
 		vangogh_integration.EgsTitleProperty,
@@ -111,7 +111,7 @@ func revealBackups() error {
 	rda := nod.Begin("revealing backups...")
 	defer rda.Done()
 
-	return currentOsReveal(camino.GetAbs(data.Backups))
+	return currentOsReveal(camino.GetAbs(vangogh_integration.Backups))
 }
 
 func revealDownloads(id string) error {
@@ -119,7 +119,7 @@ func revealDownloads(id string) error {
 	rda := nod.Begin("revealing downloads...")
 	defer rda.Done()
 
-	downloadsDir := camino.GetAbs(data.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 
 	productDownloadsDir := filepath.Join(downloadsDir, id)
 
@@ -131,12 +131,12 @@ func revealDownloads(id string) error {
 }
 
 func currentOsReveal(path string) error {
-	switch data.CurrentOs() {
+	switch vangogh_integration.CurrentOs() {
 	case vangogh_integration.MacOS:
 		return macOsReveal(path)
 	case vangogh_integration.Linux:
 		return linuxReveal(path)
 	default:
-		return data.CurrentOs().ErrUnsupported()
+		return vangogh_integration.CurrentOs().ErrUnsupported()
 	}
 }

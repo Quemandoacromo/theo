@@ -11,26 +11,10 @@ import (
 	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
-	"github.com/boggydigital/camino"
 	"github.com/boggydigital/kevlar"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
 )
-
-func productTypeRelDir(pt vangogh_integration.ProductType) camino.RelDir {
-	switch pt {
-	case vangogh_integration.GogDetails:
-		return data.GogDetails
-	case vangogh_integration.GogChecksums:
-		return data.GogChecksums
-	case vangogh_integration.GogFilenames:
-		return data.GogFilenames
-	case vangogh_integration.GogImages:
-		return data.GogImages
-	default:
-		panic("no rel dir set for product type: " + pt.String())
-	}
-}
 
 func productTypeRequest(id string, pt vangogh_integration.ProductType, rdx redux.Readable) (*http.Request, error) {
 	switch pt {
@@ -56,7 +40,10 @@ func getProductType(id string, pt vangogh_integration.ProductType, rdx redux.Wri
 	gpta := nod.Begin(" getting %s %s...", pt, id)
 	defer gpta.Done()
 
-	ptDir := camino.GetRel(productTypeRelDir(pt), data.Metadata)
+	ptDir, err := vangogh_integration.AbsProductTypeDir(pt)
+	if err != nil {
+		return nil, err
+	}
 
 	kvPt, err := kevlar.New(ptDir, pt.Ext())
 	if err != nil {

@@ -2,16 +2,17 @@ package data
 
 import (
 	"errors"
-	"github.com/arelate/southern_light/vangogh_integration"
 	"os"
 	"os/exec"
+
+	"github.com/arelate/southern_light/vangogh_integration"
 )
 
 func TheoExecutable() (string, error) {
 
 	binFilename := "theo"
 
-	currentOs := CurrentOs()
+	currentOs := vangogh_integration.CurrentOs()
 
 	switch currentOs {
 	case vangogh_integration.Windows:

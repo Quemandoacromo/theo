@@ -63,7 +63,7 @@ func Install(id string, ii *InstallInfo) error {
 	ia := nod.Begin("installing %s...", id)
 	defer ia.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -293,7 +293,7 @@ func osPreInstallActions(id string, ii *InstallInfo, rdx redux.Readable) error {
 
 	switch ii.OperatingSystem {
 	case vangogh_integration.Windows:
-		switch data.CurrentOs() {
+		switch vangogh_integration.CurrentOs() {
 		case vangogh_integration.MacOS:
 			fallthrough
 		case vangogh_integration.Linux:
@@ -315,7 +315,7 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 			return "", err
 		}
 
-		installedAppsDir := camino.GetRel(data.GogApps, data.InstalledApps)
+		installedAppsDir := camino.GetRel(vangogh_integration.GogApps, vangogh_integration.InstalledApps)
 
 		osLangInstalledAppsDir := filepath.Join(installedAppsDir, data.OsLangCode(ii.OperatingSystem, ii.LangCode))
 
@@ -343,7 +343,7 @@ func originOsInstalledPath(id string, ii *InstallInfo, rdx redux.Readable) (stri
 			return "", err
 		}
 	case data.EpicGamesOrigin:
-		egsAppsDir := camino.GetRel(data.EgsApps, data.InstalledApps)
+		egsAppsDir := camino.GetRel(vangogh_integration.EgsApps, vangogh_integration.InstalledApps)
 
 		osEgsAppsDir := filepath.Join(egsAppsDir, ii.OperatingSystem.String())
 

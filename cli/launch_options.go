@@ -60,7 +60,7 @@ func LaunchOptions(id string, request *InstallInfo, et *execTask, reset bool) er
 	loa := nod.Begin("setting launch options for %s...", id)
 	defer loa.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func LaunchOptions(id string, request *InstallInfo, et *execTask, reset bool) er
 			return err
 		}
 
-		if err = rdx.ReplaceValues(data.LaunchOptionsEnvProperty, appOsLangCode, osEnvDefaults[data.CurrentOs()]...); err != nil {
+		if err = rdx.ReplaceValues(data.LaunchOptionsEnvProperty, appOsLangCode, osEnvDefaults[vangogh_integration.CurrentOs()]...); err != nil {
 			return err
 		}
 	}

@@ -26,12 +26,12 @@ func SetupSteamCmdHandler(u *url.URL) error {
 
 func SetupSteamCmd(force bool) error {
 
-	currentOs := data.CurrentOs()
+	currentOs := vangogh_integration.CurrentOs()
 
 	ssca := nod.Begin("setting up SteamCMD for %s...", currentOs)
 	defer ssca.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.VangoghProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.VangoghProperties()...)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func downloadSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSyste
 	dscba := nod.NewProgress(" downloading SteamCMD for %s...", operatingSystem)
 	defer dscba.Done()
 
-	steamCmdReleasesDir := camino.GetRel(data.Releases, data.Binaries)
+	steamCmdReleasesDir := camino.GetRel(vangogh_integration.Releases, vangogh_integration.Binaries)
 
 	apiBinarySteamCmdPath := path.Join(data.ApiBinaryPath, operatingSystem.String(), steamcmd.Title)
 
@@ -91,10 +91,10 @@ func unpackSteamCmdBinaries(operatingSystem vangogh_integration.OperatingSystem,
 		return nil
 	}
 
-	steamCmdReleasesDir := camino.GetRel(data.Releases, data.Binaries)
+	steamCmdReleasesDir := camino.GetRel(vangogh_integration.Releases, vangogh_integration.Binaries)
 	absSteamCmdDownload := filepath.Join(steamCmdReleasesDir, filepath.Base(steamcmd.Urls[operatingSystem]))
 
-	runtimesDir := camino.GetRel(data.Runtimes, data.Binaries)
+	runtimesDir := camino.GetRel(vangogh_integration.Runtimes, vangogh_integration.Binaries)
 	steamCmdRuntimesDir := filepath.Join(runtimesDir, steamcmd.Title)
 	osSteamCmdBinariesDir := filepath.Join(steamCmdRuntimesDir, operatingSystem.String())
 

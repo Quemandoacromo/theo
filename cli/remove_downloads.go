@@ -32,7 +32,7 @@ func RemoveDownloadsHandler(u *url.URL) error {
 		force:           q.Has(vangogh_integration.UrlForceParameter),
 	}
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func RemoveDownloads(id string, ii *InstallInfo, rdx redux.Writeable) error {
 
 func originRemoveDownloads(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
 
-	downloadsDir := camino.GetAbs(data.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 
 	switch ii.Origin {
 	case data.VangoghOrigin:

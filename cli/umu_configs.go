@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/southern_light/wine_integration"
 	"github.com/arelate/theo/data"
 	"github.com/boggydigital/camino"
@@ -42,7 +43,7 @@ func getLatestUmuConfigsDir(rdx redux.Readable) (string, error) {
 		return "", errors.New("umu-launcher version not found, please run setup-wine")
 	}
 
-	umuConfigsDir := camino.GetRel(data.UmuConfigs, data.InstalledApps)
+	umuConfigsDir := camino.GetRel(vangogh_integration.UmuConfigs, vangogh_integration.InstalledApps)
 	latestUmuConfigsDir := filepath.Join(umuConfigsDir, latestUmuLauncherVersion)
 
 	return latestUmuConfigsDir, nil

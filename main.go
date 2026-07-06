@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/cli"
 	"github.com/arelate/theo/clo_delegates"
-	"github.com/arelate/theo/data"
 	"github.com/boggydigital/clo"
 	"github.com/boggydigital/nod"
 )
@@ -28,7 +28,7 @@ func main() {
 	tsa := nod.Begin("theo is complementing vangogh experience")
 	defer tsa.Done()
 
-	if err := data.InitTheoCamino(); err != nil {
+	if err := vangogh_integration.InitTheoCamino(); err != nil {
 		log.Fatalln(err)
 	}
 

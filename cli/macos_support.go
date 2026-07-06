@@ -12,7 +12,6 @@ import (
 
 	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
-	"github.com/arelate/theo/data"
 	"github.com/boggydigital/camino"
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
@@ -48,7 +47,7 @@ func macOsUnpackInstallers(id string, downloadsList vangogh_integration.Download
 	mui := nod.Begin(" unpacking %s installers with pkgutil, please wait...", id)
 	defer mui.Done()
 
-	downloadsDir := camino.GetAbs(data.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 	productDownloadsDir := filepath.Join(downloadsDir, id)
 
 	installerUnpacked := false
@@ -113,7 +112,7 @@ func macOsInnoextractInstallers(id string, ii *InstallInfo, localFilenames []str
 	miia := nod.Begin(" innoextract %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer miia.Done()
 
-	downloadsDir := camino.GetAbs(data.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 
 	innoextractPath, err := exec.LookPath(innoextractBinaryFn)
 	if err != nil {
@@ -318,7 +317,7 @@ func macOsPostInstallActions(id string,
 			continue
 		}
 
-		downloadsDir := camino.GetAbs(data.Downloads)
+		downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 
 		productDownloadsDir := filepath.Join(downloadsDir, id)
 

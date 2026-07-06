@@ -45,7 +45,7 @@ func Uninstall(id string, request *InstallInfo, purge bool) error {
 	ua := nod.Begin("uninstalling %s...", id)
 	defer ua.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func originUninstall(id string, installInfo *InstallInfo, rdx redux.Writeable) e
 	case data.SteamOrigin:
 
 		var absSteamCmdPath string
-		absSteamCmdPath, err = data.AbsSteamCmdBinPath(data.CurrentOs())
+		absSteamCmdPath, err = data.AbsSteamCmdBinPath(vangogh_integration.CurrentOs())
 		if err != nil {
 			return err
 		}

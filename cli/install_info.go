@@ -305,8 +305,8 @@ func setInstallInfoDefaults(request *InstallInfo, availableOperatingSystems []va
 	}
 
 	if request.OperatingSystem == vangogh_integration.AnyOperatingSystem {
-		if slices.Contains(availableOperatingSystems, data.CurrentOs()) {
-			request.OperatingSystem = data.CurrentOs()
+		if slices.Contains(availableOperatingSystems, vangogh_integration.CurrentOs()) {
+			request.OperatingSystem = vangogh_integration.CurrentOs()
 		} else {
 			request.OperatingSystem = vangogh_integration.Windows
 		}

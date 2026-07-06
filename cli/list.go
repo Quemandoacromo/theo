@@ -120,7 +120,7 @@ func listAvailableProducts(ii *InstallInfo, update bool) error {
 	var availableProducts []vangogh_integration.AvailableProduct
 	var err error
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func listInstalled(ii *InstallInfo) error {
 	lia := nod.Begin("listing installed products for %s, %s...", ii.OperatingSystem, ii.LangCode)
 	defer lia.Done()
 
-	rdx, err := redux.NewReader(data.AbsReduxDir(),
+	rdx, err := redux.NewReader(vangogh_integration.AbsReduxDir(),
 		vangogh_integration.GogTitleProperty,
 		vangogh_integration.SteamTitleProperty,
 		vangogh_integration.EgsTitleProperty,
@@ -332,7 +332,7 @@ func listLaunchOptions(id string, request *InstallInfo) error {
 	lloa := nod.Begin("listing launch options for %s...", id)
 	defer lloa.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -372,7 +372,7 @@ func listTasks(id string, request *InstallInfo) error {
 	lpta := nod.Begin("listing tasks for %s...", id)
 	defer lpta.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}

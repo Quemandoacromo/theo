@@ -41,7 +41,7 @@ func Connect(urlStr, username, password, cookies string, origin data.Origin, res
 	ca := nod.Begin("setting up theo connection...")
 	defer ca.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}

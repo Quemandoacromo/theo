@@ -30,7 +30,11 @@ func vangoghGetAvailableProducts(force bool) ([]vangogh_integration.AvailablePro
 	vlapa := nod.Begin("getting available vangogh products...")
 	defer vlapa.Done()
 
-	availableProductsDir := camino.GetRel(data.AvailableProducts, data.Metadata)
+	availableProductsDir, err := vangogh_integration.AbsProductTypeDir(vangogh_integration.AvailableProducts)
+	if err != nil {
+		return nil, err
+	}
+
 	kvAvailableProducts, err := kevlar.New(availableProductsDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
@@ -63,7 +67,7 @@ func vangoghFetchAvailableProducts(kvAvailableProducts kevlar.KeyValues) error {
 	vgapa := nod.Begin(" fetching vangogh available products...")
 	defer vgapa.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.VangoghProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.VangoghProperties()...)
 	if err != nil {
 		return err
 	}
@@ -362,7 +366,7 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 	// 8. cleanup unpack directory
 
 	// 1
-	installedAppsDir := camino.GetRel(data.GogApps, data.InstalledApps)
+	installedAppsDir := camino.GetRel(vangogh_integration.GogApps, vangogh_integration.InstalledApps)
 
 	if err = originHasFreeSpace(id, installedAppsDir, ii, originData); err != nil {
 		return err
@@ -425,11 +429,11 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 
 func vangoghGetUnpackDir(id string, ii *InstallInfo, rdx redux.Readable) (string, error) {
 
-	unpackDir := filepath.Join(camino.GetRel(data.Temp, data.Downloads), id)
+	unpackDir := filepath.Join(camino.GetRel(vangogh_integration.Temp, vangogh_integration.Downloads), id)
 
 	switch ii.OperatingSystem {
 	case vangogh_integration.Windows:
-		switch data.CurrentOs() {
+		switch vangogh_integration.CurrentOs() {
 		case vangogh_integration.MacOS:
 
 			ieInstalled := macOsIsInnoextractInstalled()
@@ -477,7 +481,7 @@ func vangoghUnpackInstallers(id string, ii *InstallInfo, downloadsList vangogh_i
 	case vangogh_integration.Linux:
 		return linuxUnpackInstallers(id, localFilenames, unpackDir)
 	case vangogh_integration.Windows:
-		switch data.CurrentOs() {
+		switch vangogh_integration.CurrentOs() {
 		case vangogh_integration.MacOS:
 			return macOsUnpackWindowsInstallers(id, ii, localFilenames, rdx, unpackDir)
 		case vangogh_integration.Linux:
@@ -519,7 +523,7 @@ func vangoghPlaceUnpackedFiles(id string, ii *InstallInfo, downloadsList vangogh
 	case vangogh_integration.Linux:
 		return linuxPlaceUnpackedFiles(id, ii, localFilenames, rdx, unpackDir)
 	case vangogh_integration.Windows:
-		switch data.CurrentOs() {
+		switch vangogh_integration.CurrentOs() {
 		case vangogh_integration.MacOS:
 			fallthrough
 		case vangogh_integration.Linux:
@@ -585,7 +589,7 @@ func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData
 		return err
 	}
 
-	downloadsDir := camino.GetAbs(data.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 
 	if err := originHasFreeSpace(id, downloadsDir, ii, originData, manualUrlFilter...); err != nil {
 		return err
@@ -730,7 +734,7 @@ func vangoghGetExecTask(id string, ii *InstallInfo, rdx redux.Readable, et *exec
 		return nil, err
 	}
 
-	if ii.OperatingSystem == vangogh_integration.Windows && data.CurrentOs() != vangogh_integration.Windows {
+	if ii.OperatingSystem == vangogh_integration.Windows && vangogh_integration.CurrentOs() != vangogh_integration.Windows {
 
 		var absPrefixDir string
 		if absPrefixDir, err = data.AbsPrefixDir(id, ii.Origin, rdx); err == nil {
@@ -816,7 +820,7 @@ func vangoghValidateLinks(id string,
 	vla := nod.NewProgress("validating %s...", id)
 	defer vla.Done()
 
-	downloadsDir := camino.GetAbs(data.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 
 	downloadTypes := []vangogh_integration.DownloadType{vangogh_integration.Installer}
 	if !ii.NoDlcs {

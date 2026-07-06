@@ -38,7 +38,7 @@ func linuxUnpackInstallers(id string, localFilenames []string, unpackDir string)
 			continue
 		}
 
-		downloadsDir := camino.GetAbs(data.Downloads)
+		downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 		linkInstallerPath := filepath.Join(downloadsDir, id, localFilename)
 
 		absUnpackDir := filepath.Join(unpackDir, localFilename)
@@ -81,7 +81,7 @@ func linuxInnoextractInstallers(id string, ii *InstallInfo, localFilenames []str
 	liia := nod.Begin(" innoextract %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer liia.Done()
 
-	downloadsDir := camino.GetAbs(data.Downloads)
+	downloadsDir := camino.GetAbs(vangogh_integration.Downloads)
 
 	for _, localFilename := range localFilenames {
 
@@ -155,7 +155,7 @@ func nixRunExecTask(et *execTask) error {
 	nreta := nod.Begin(" running %s...", et.title)
 	defer nreta.Done()
 
-	if data.CurrentOs() == vangogh_integration.MacOS &&
+	if vangogh_integration.CurrentOs() == vangogh_integration.MacOS &&
 		strings.HasSuffix(et.exe, appBundleExt) {
 		et.args = append([]string{et.exe, "--args"}, et.args...)
 		et.exe = "open"

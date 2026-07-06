@@ -41,7 +41,7 @@ func FetchData(id string, ii *InstallInfo) error {
 	fda := nod.Begin("fetching data for %s, %s from %s...", id, ii.OperatingSystem, ii.Origin)
 	defer fda.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}

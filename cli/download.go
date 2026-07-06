@@ -59,7 +59,7 @@ func Download(id string,
 	da := nod.Begin("downloading product data...")
 	defer da.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}

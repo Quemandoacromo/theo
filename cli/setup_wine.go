@@ -37,7 +37,7 @@ func SetupWine(force bool) error {
 
 	start := time.Now()
 
-	currentOs := data.CurrentOs()
+	currentOs := vangogh_integration.CurrentOs()
 
 	if currentOs == vangogh_integration.Windows {
 		err := errors.New("WINE is not required on Windows")
@@ -49,7 +49,7 @@ func SetupWine(force bool) error {
 
 	properties := append(data.VangoghProperties(), data.WineBinariesVersionsProperty)
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), properties...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), properties...)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func downloadWineBinary(binary *vangogh_integration.WineBinaryDetails, rdx redux
 		return err
 	}
 
-	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
+	binariesReleasesDir := camino.GetRel(vangogh_integration.Releases, vangogh_integration.Binaries)
 
 	if currentVersion, ok := rdx.GetLastVal(data.WineBinariesVersionsProperty, binary.Title); ok && binary.Version == currentVersion && !force {
 		dwba.EndWithResult("latest version already available")
@@ -184,7 +184,7 @@ func validateWineBinaries(wbd []vangogh_integration.WineBinaryDetails, operating
 	vwba := nod.NewProgress("validating WINE binaries...")
 	defer vwba.Done()
 
-	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
+	binariesReleasesDir := camino.GetRel(vangogh_integration.Releases, vangogh_integration.Binaries)
 
 	for _, wineBinary := range wbd {
 		if wineBinary.OS != operatingSystem && wineBinary.OS != vangogh_integration.Windows {
@@ -230,7 +230,7 @@ func cleanupDownloadedWineBinaries(wbd []vangogh_integration.WineBinaryDetails, 
 		expectedFiles = append(expectedFiles, wineBinary.Filename)
 	}
 
-	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
+	binariesReleasesDir := camino.GetRel(vangogh_integration.Releases, vangogh_integration.Binaries)
 
 	wineDownloadsDir, err := os.Open(binariesReleasesDir)
 	if err != nil {
@@ -280,8 +280,8 @@ func unpackWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 	uwba := nod.Begin("unpacking WINE binaries...")
 	defer uwba.Done()
 
-	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
-	binariesRuntimesDir := camino.GetRel(data.Runtimes, data.Binaries)
+	binariesReleasesDir := camino.GetRel(vangogh_integration.Releases, vangogh_integration.Binaries)
+	binariesRuntimesDir := camino.GetRel(vangogh_integration.Runtimes, vangogh_integration.Binaries)
 
 	for _, wineBinary := range wbd {
 		if wineBinary.OS != operatingSystem {
@@ -312,7 +312,7 @@ func unpackWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 			fallthrough
 		case ".gz":
 			if filepath.Ext(strings.TrimSuffix(wineBinary.Filename, ext)) == ".tar" {
-				switch data.CurrentOs() {
+				switch vangogh_integration.CurrentOs() {
 				case vangogh_integration.Linux:
 					scOption = "--strip-components=1"
 					if len(tarFiles) > 0 {
@@ -344,7 +344,7 @@ func cleanupUnpackedWineBinaries(wbd []vangogh_integration.WineBinaryDetails,
 	cuwba := nod.NewProgress("cleaning up unpacked WINE binaries...")
 	defer cuwba.Done()
 
-	runtimesDir := camino.GetRel(data.Runtimes, data.Binaries)
+	runtimesDir := camino.GetRel(vangogh_integration.Runtimes, vangogh_integration.Binaries)
 
 	absExpectedDirs := make([]string, 0)
 	absActualDirs := make([]string, 0)

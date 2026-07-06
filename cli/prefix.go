@@ -60,7 +60,7 @@ func PrefixHandler(u *url.URL) error {
 
 func Prefix(id string, request *InstallInfo, mod, program, wineBinary string, et *execTask) error {
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func prefixInstallBinary(id string, wineBinary string, absPrefixDir string, et *
 	// Currently all coded WINE binaries are direct download sources, so this if fine for now.
 	wbFilename := path.Base(requestedWineBinary.DownloadUrl)
 
-	binariesReleasesDir := camino.GetRel(data.Releases, data.Binaries)
+	binariesReleasesDir := camino.GetRel(vangogh_integration.Releases, vangogh_integration.Binaries)
 
 	et.title = requestedWineBinary.String()
 	et.exe = filepath.Join(binariesReleasesDir, wbFilename)
@@ -193,7 +193,7 @@ func prefixModRetina(id string, origin data.Origin, revert bool, rdx redux.Write
 	mpa := nod.Begin("modding retina in prefix for %s...", id)
 	defer mpa.Done()
 
-	if data.CurrentOs() != vangogh_integration.MacOS {
+	if vangogh_integration.CurrentOs() != vangogh_integration.MacOS {
 		mpa.EndWithResult("retina prefix mod is only applicable to %s", vangogh_integration.MacOS)
 		return nil
 	}
@@ -229,7 +229,7 @@ func prefixModRetina(id string, origin data.Origin, revert bool, rdx redux.Write
 		verbose: verbose,
 	}
 
-	switch data.CurrentOs() {
+	switch vangogh_integration.CurrentOs() {
 	case vangogh_integration.MacOS:
 		if err = macOsWineExecTask(id, et); err != nil {
 			return err

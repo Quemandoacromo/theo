@@ -157,7 +157,7 @@ func SteamShortcutHandler(u *url.URL) error {
 
 func SteamShortcut(id, forId string, ii *InstallInfo, sgo *steamGridOptions, remove bool) error {
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func fetchSteamGridImages(loginUser string, shortcutId uint32, sgo *steamGridOpt
 	dsa := nod.Begin(" downloading Steam grid images...")
 	defer dsa.Done()
 
-	udhd, err := data.UserDataHomeDir()
+	udhd, err := vangogh_integration.UserDataHomeDir()
 	if err != nil {
 		return err
 	}
@@ -334,7 +334,7 @@ func setLogoPosition(loginUser string, shortcutId uint32, lp *logoPosition) erro
 	slpa := nod.Begin(" setting Steam Grid logo position...")
 	defer slpa.Done()
 
-	udhd, err := data.UserDataHomeDir()
+	udhd, err := vangogh_integration.UserDataHomeDir()
 	if err != nil {
 		return err
 	}
@@ -402,7 +402,7 @@ func readUserShortcuts(loginUser string) (steam_vdf.ValveDataFile, error) {
 	rusa := nod.Begin(" loading Steam user %s shortcuts.vdf...", loginUser)
 	defer rusa.Done()
 
-	udhd, err := data.UserDataHomeDir()
+	udhd, err := vangogh_integration.UserDataHomeDir()
 	if err != nil {
 		return nil, err
 	}
@@ -434,7 +434,7 @@ func emptyUserShortcuts() []*steam_vdf.KeyValues {
 }
 
 func getGridIconPath(loginUser string, appId uint32) string {
-	udhd, err := data.UserDataHomeDir()
+	udhd, err := vangogh_integration.UserDataHomeDir()
 	if err != nil {
 		return ""
 	}
@@ -447,7 +447,7 @@ func writeUserShortcuts(loginUser string, kvUserShortcuts []*steam_vdf.KeyValues
 	wusa := nod.Begin(" writing Steam user %s shortcuts.vdf...", loginUser)
 	defer wusa.Done()
 
-	udhd, err := data.UserDataHomeDir()
+	udhd, err := vangogh_integration.UserDataHomeDir()
 	if err != nil {
 		return err
 	}
@@ -461,7 +461,7 @@ func getSteamLoginUsers() ([]string, error) {
 	gslua := nod.Begin(" getting Steam loginusers.vdf users...")
 	defer gslua.Done()
 
-	udhd, err := data.UserDataHomeDir()
+	udhd, err := vangogh_integration.UserDataHomeDir()
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +506,7 @@ func getSteamLoginUsers() ([]string, error) {
 }
 
 func steamStateDirExist() (bool, error) {
-	udhd, err := data.UserDataHomeDir()
+	udhd, err := vangogh_integration.UserDataHomeDir()
 	if err != nil {
 		return false, err
 	}
@@ -605,7 +605,7 @@ func removeSteamGridImages(loginUser string, shortcutId uint32) error {
 	rsgia := nod.Begin(" removing Steam Grid images...")
 	defer rsgia.Done()
 
-	udhd, err := data.UserDataHomeDir()
+	udhd, err := vangogh_integration.UserDataHomeDir()
 	if err != nil {
 		return err
 	}

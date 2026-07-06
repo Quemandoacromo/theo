@@ -84,7 +84,7 @@ func Validate(id string,
 	va := nod.Begin("validating %s: %s...", ii.Origin, id)
 	defer va.Done()
 
-	rdx, err := redux.NewWriter(data.AbsReduxDir(), data.AllProperties()...)
+	rdx, err := redux.NewWriter(vangogh_integration.AbsReduxDir(), data.AllProperties()...)
 	if err != nil {
 		return err
 	}
