@@ -27,21 +27,21 @@ const (
 
 const innoextractBinaryFn = "innoextract"
 
-func linuxUnpackInstallers(id string, dls vangogh_integration.ProductDownloadLinks, unpackDir string) error {
+func linuxUnpackInstallers(id string, localFilenames []string, unpackDir string) error {
 
 	luida := nod.Begin("unpacking %s installers for %s...", vangogh_integration.Linux, id)
 	defer luida.Done()
 
-	for _, link := range dls {
+	for _, localFilename := range localFilenames {
 
-		if !isLinkExecutable(&link, vangogh_integration.Linux) {
+		if !isExecutable(localFilename, vangogh_integration.Linux) {
 			continue
 		}
 
 		downloadsDir := camino.GetAbs(data.Downloads)
-		linkInstallerPath := filepath.Join(downloadsDir, id, link.LocalFilename)
+		linkInstallerPath := filepath.Join(downloadsDir, id, localFilename)
 
-		absUnpackDir := filepath.Join(unpackDir, link.LocalFilename)
+		absUnpackDir := filepath.Join(unpackDir, localFilename)
 
 		if err := linuxExtractInstallerData(linkInstallerPath, absUnpackDir); err != nil {
 			return err
@@ -67,37 +67,37 @@ func linuxExtractInstallerData(linkInstallerPath, absUnpackDir string) error {
 	return unzip(absDataPath, absUnpackDir)
 }
 
-func linuxUnpackWindowsInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
+func linuxUnpackWindowsInstallers(id string, ii *InstallInfo, localFilenames []string, rdx redux.Readable, unpackDir string) error {
 
 	if absInnoextractBinaryPath, err := data.InnoextractLatestReleasePath(innoextractBinaryFn, rdx); err == nil && absInnoextractBinaryPath != "" {
-		return linuxInnoextractInstallers(id, ii, dls, unpackDir, absInnoextractBinaryPath)
+		return linuxInnoextractInstallers(id, ii, localFilenames, unpackDir, absInnoextractBinaryPath)
 	} else {
-		return prefixRunInstallers(id, ii, dls, rdx, unpackDir)
+		return prefixRunInstallers(id, ii, localFilenames, rdx, unpackDir)
 	}
 }
 
-func linuxInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, unpackDir, innoextractPath string) error {
+func linuxInnoextractInstallers(id string, ii *InstallInfo, localFilenames []string, unpackDir, innoextractPath string) error {
 
 	liia := nod.Begin(" innoextract %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer liia.Done()
 
 	downloadsDir := camino.GetAbs(data.Downloads)
 
-	for _, link := range dls {
+	for _, localFilename := range localFilenames {
 
-		if !isLinkExecutable(&link, vangogh_integration.Windows) {
+		if !isExecutable(localFilename, vangogh_integration.Windows) {
 			continue
 		}
 
-		absDstDir := filepath.Join(unpackDir, link.LocalFilename)
+		absDstDir := filepath.Join(unpackDir, localFilename)
 		if _, err := os.Stat(absDstDir); os.IsNotExist(err) {
 			if err = os.MkdirAll(absDstDir, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}
 
-		absInstallerPath := filepath.Join(downloadsDir, id, link.LocalFilename)
-		absUnpackDir := filepath.Join(unpackDir, link.LocalFilename)
+		absInstallerPath := filepath.Join(downloadsDir, id, localFilename)
+		absUnpackDir := filepath.Join(unpackDir, localFilename)
 
 		if err := nixInnoextract(innoextractPath, absInstallerPath, absUnpackDir); err != nil {
 			return err
@@ -106,25 +106,25 @@ func linuxInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integrat
 
 	return nil
 }
-func linuxPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
+func linuxPlaceUnpackedFiles(id string, ii *InstallInfo, localFilenames []string, rdx redux.Readable, unpackDir string) error {
 
 	lufa := nod.Begin(" placing unpacked files for %s...", id)
 	defer lufa.Done()
 
-	for _, link := range dls {
+	for _, localFilename := range localFilenames {
 
-		if !isLinkExecutable(&link, vangogh_integration.Linux) {
+		if !isExecutable(localFilename, vangogh_integration.Linux) {
 			continue
 		}
 
-		absUnpackedPath := filepath.Join(unpackDir, link.LocalFilename, relExtractedDataPath)
+		absUnpackedPath := filepath.Join(unpackDir, localFilename, relExtractedDataPath)
 		if _, err := os.Stat(absUnpackedPath); os.IsNotExist(err) {
 			return ErrMissingExtractedPayload
 		}
 
 		installedAppPath, err := originOsInstalledPath(id, ii, rdx)
 
-		if err = vangoghPlaceUnpackedLinkPayload(&link, absUnpackedPath, installedAppPath); err != nil {
+		if err = vangoghPlaceUnpackedLinkPayload(localFilename, absUnpackedPath, installedAppPath); err != nil {
 			return err
 		}
 	}

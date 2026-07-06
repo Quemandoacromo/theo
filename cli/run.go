@@ -190,28 +190,6 @@ func installedIdFromNameFragment(name string, rdx redux.Readable) (string, error
 	}
 }
 
-func checkProductType(id string, rdx redux.Writeable, force bool) error {
-
-	productDetails, err := vangoghGetProductDetails(id, rdx, force)
-	if err != nil {
-		return err
-	}
-
-	switch productDetails.ProductType {
-	case gog_integration.ProductTypeGame:
-		// do nothing, proceed normally
-		return nil
-	case gog_integration.ProductTypePack:
-		return errors.New("cannot run a PACK product, please run included game(s): " +
-			strings.Join(productDetails.IncludesGames, ","))
-	case gog_integration.ProductTypeDlc:
-		return errors.New("cannot run a DLC product, please run required game(s): " +
-			strings.Join(productDetails.RequiresGames, ","))
-	default:
-		return errors.New("unsupported product type: " + productDetails.ProductType)
-	}
-}
-
 func setLastRunDate(rdx redux.Writeable, id string) error {
 
 	if err := rdx.MustHave(data.LastRunDateProperty); err != nil {
@@ -263,9 +241,6 @@ func originGetExecTask(id string, ii *InstallInfo, originData *data.OriginData, 
 
 	switch ii.Origin {
 	case data.VangoghOrigin:
-		if err = checkProductType(id, rdx, ii.force); err != nil {
-			return nil, err
-		}
 		if et, err = vangoghGetExecTask(id, ii, rdx, et); err != nil {
 			return nil, err
 		}

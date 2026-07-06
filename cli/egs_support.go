@@ -415,7 +415,7 @@ func egsFetchGameAssets(operatingSystem vangogh_integration.OperatingSystem) err
 
 func egsGetCatalogItem(gameAsset *egs_integration.GameAsset, ii *InstallInfo, rdx redux.Writeable) (*egs_integration.CatalogItem, error) {
 
-	catalogItemsDir := camino.GetRel(data.CatalogItems, data.Metadata)
+	catalogItemsDir := camino.GetRel(data.EgsCatalogItems, data.Metadata)
 	kvCatalogItems, err := kevlar.New(catalogItemsDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
@@ -529,7 +529,7 @@ func egsGetGameManifest(gameAsset *egs_integration.GameAsset, ii *InstallInfo, f
 	eggma := nod.Begin("getting EGS game manifest...")
 	defer eggma.Done()
 
-	gameManifestsDir := camino.GetRel(data.GameManifests, data.Metadata)
+	gameManifestsDir := camino.GetRel(data.EgsGameManifests, data.Metadata)
 	kvGameManifests, err := kevlar.New(gameManifestsDir, kevlar.JsonExt)
 	if err != nil {
 		return nil, err
@@ -592,7 +592,7 @@ func egsGetManifest(appName string, gameManifest *egs_integration.GameManifest, 
 	egma := nod.Begin("getting EGS manifest...")
 	defer egma.Done()
 
-	manifestsDir := camino.GetRel(data.Manifests, data.Metadata)
+	manifestsDir := camino.GetRel(data.EgsManifests, data.Metadata)
 	kvManifests, err := kevlar.New(manifestsDir, egs_integration.ManifestExt)
 	if err != nil {
 		return nil, err

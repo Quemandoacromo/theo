@@ -52,7 +52,7 @@ func prefixTempUnpackDir(id string, origin data.Origin, rdx redux.Readable) (str
 	return filepath.Join(absPrefixDir, prefixRelDriveCDir, "Temp", id), nil
 }
 
-func prefixRunInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
+func prefixRunInstallers(id string, ii *InstallInfo, localFilenames []string, rdx redux.Readable, unpackDir string) error {
 
 	puia := nod.Begin(" running %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer puia.Done()
@@ -64,26 +64,26 @@ func prefixRunInstallers(id string, ii *InstallInfo, dls vangogh_integration.Pro
 		return err
 	}
 
-	for _, link := range dls {
+	for _, localFilename := range localFilenames {
 
-		if !isLinkExecutable(&link, vangogh_integration.Windows) {
+		if !isExecutable(localFilename, vangogh_integration.Windows) {
 			continue
 		}
 
-		absDstDir := filepath.Join(unpackDir, link.LocalFilename)
+		absDstDir := filepath.Join(unpackDir, localFilename)
 		if _, err = os.Stat(absDstDir); os.IsNotExist(err) {
 			if err = os.MkdirAll(absDstDir, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}
 
-		absInstallerPath := filepath.Join(downloadsDir, id, link.LocalFilename)
-		prefixDstDir := filepath.Join("C:", "Temp", id, link.LocalFilename)
+		absInstallerPath := filepath.Join(downloadsDir, id, localFilename)
+		prefixDstDir := filepath.Join("C:", "Temp", id, localFilename)
 
 		innoSetupDirArg := strings.Replace(innoSetupDirArgTemplate, "{dir}", prefixDstDir, 1)
 
 		et := &execTask{
-			title:   link.LocalFilename,
+			title:   localFilename,
 			exe:     absInstallerPath,
 			workDir: downloadsDir,
 			prefix:  absPrefixDir,
@@ -113,25 +113,25 @@ func prefixRunInstallers(id string, ii *InstallInfo, dls vangogh_integration.Pro
 	return nil
 }
 
-func prefixPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
+func prefixPlaceUnpackedFiles(id string, ii *InstallInfo, localFilenames []string, rdx redux.Readable, unpackDir string) error {
 
 	pufa := nod.Begin(" placing unpacked files for %s...", id)
 	defer pufa.Done()
 
-	for _, link := range dls {
+	for _, localFilename := range localFilenames {
 
-		if !isLinkExecutable(&link, vangogh_integration.Windows) {
+		if !isExecutable(localFilename, vangogh_integration.Windows) {
 			continue
 		}
 
-		absUnpackedPath := filepath.Join(unpackDir, link.LocalFilename)
+		absUnpackedPath := filepath.Join(unpackDir, localFilename)
 		if _, err := os.Stat(absUnpackedPath); os.IsNotExist(err) {
 			return ErrMissingExtractedPayload
 		}
 
 		installedAppPath, err := originOsInstalledPath(id, ii, rdx)
 
-		if err = vangoghPlaceUnpackedLinkPayload(&link, absUnpackedPath, installedAppPath); err != nil {
+		if err = vangoghPlaceUnpackedLinkPayload(localFilename, absUnpackedPath, installedAppPath); err != nil {
 			return err
 		}
 	}

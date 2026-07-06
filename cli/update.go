@@ -158,7 +158,14 @@ func originIsInstalledInfoUpdated(id string, installedInfo *InstallInfo, rdx red
 
 	switch installedInfo.Origin {
 	case data.VangoghOrigin:
-		latestVersion = productDetailsVersion(originData.ProductDetails, installedInfo)
+
+		var downloadsList vangogh_integration.DownloadsList
+		downloadsList, err = vangogh_integration.FromDetails(originData.GogDetails)
+		if err != nil {
+			return false, err
+		}
+
+		latestVersion = vangoghDownloadsListVersion(downloadsList, installedInfo)
 	case data.SteamOrigin:
 		latestVersion, err = steamAppInfoVersion(id, originData.AppInfoKv)
 		if err != nil {
@@ -189,15 +196,17 @@ func originIsInstalledInfoUpdated(id string, installedInfo *InstallInfo, rdx red
 	}
 }
 
-func productDetailsVersion(productDetails *vangogh_integration.ProductDetails, ii *InstallInfo) string {
-	dls := productDetails.DownloadLinks.
+func vangoghDownloadsListVersion(downloadsList vangogh_integration.DownloadsList, ii *InstallInfo) string {
+
+	dls := downloadsList.
 		FilterOperatingSystems(ii.OperatingSystem).
 		FilterDownloadTypes(vangogh_integration.Installer).
-		FilterLanguageCodes(ii.LangCode)
+		FilterLangCodes(ii.LangCode).
+		FilterPatches(true)
 
 	var version string
-	for ii, dl := range dls {
-		if ii == 0 {
+	for jj, dl := range dls {
+		if jj == 0 {
 			version = dl.Version
 		}
 	}

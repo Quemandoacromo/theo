@@ -14,8 +14,8 @@ import (
 	"github.com/boggydigital/redux"
 )
 
-func isLinkExecutable(link *vangogh_integration.ProductDownloadLink, operatingSystem vangogh_integration.OperatingSystem) bool {
-	ext := filepath.Ext(link.LocalFilename)
+func isExecutable(path string, operatingSystem vangogh_integration.OperatingSystem) bool {
+	ext := filepath.Ext(path)
 	switch operatingSystem {
 	case vangogh_integration.MacOS:
 		return ext == pkgExt
@@ -28,20 +28,42 @@ func isLinkExecutable(link *vangogh_integration.ProductDownloadLink, operatingSy
 	}
 }
 
-func getInventory(operatingSystem vangogh_integration.OperatingSystem, dls vangogh_integration.ProductDownloadLinks, unpackDir string) ([]string, error) {
+func gogDownloadslocalFilenames(downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string) []string {
+	var downloadsFilenames []string
+
+	for _, dl := range downloadsList {
+
+		localFilename := gogFilenames[dl.ManualUrl]
+		switch localFilename {
+		case "":
+			continue
+		default:
+			downloadsFilenames = append(downloadsFilenames, localFilename)
+		}
+	}
+
+	return downloadsFilenames
+}
+
+func vangoghGetOsInventory(operatingSystem vangogh_integration.OperatingSystem, downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string, unpackDir string) ([]string, error) {
 
 	gia := nod.Begin(" creating inventory of unpacked files...")
 	defer gia.Done()
 
 	filesMap := make(map[string]any)
 
-	for _, link := range dls {
+	for _, link := range downloadsList {
 
-		if !isLinkExecutable(&link, operatingSystem) {
+		var localFilename string
+		if localFilename = gogFilenames[link.ManualUrl]; localFilename == "" {
 			continue
 		}
 
-		absUnpackedPath := filepath.Join(unpackDir, link.LocalFilename)
+		if !isExecutable(localFilename, operatingSystem) {
+			continue
+		}
+
+		absUnpackedPath := filepath.Join(unpackDir, localFilename)
 
 		relUnpackedFiles, err := relWalkDir(absUnpackedPath)
 		if err != nil {

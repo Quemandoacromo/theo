@@ -3,7 +3,6 @@ package cli
 import (
 	"bufio"
 	_ "embed"
-	"github.com/arelate/southern_light/vangogh_integration"
 	"os"
 	"path/filepath"
 	"slices"
@@ -82,7 +81,7 @@ func ParsePostInstallScript(path string) (*PostInstallScript, error) {
 	return pis, nil
 }
 
-func PostInstallScriptPath(productExtractsDir string, link *vangogh_integration.ProductDownloadLink) string {
-	localFilenameExtractsDir := filepath.Join(productExtractsDir, link.LocalFilename)
+func PostInstallScriptPath(productExtractsDir string, localFilename string) string {
+	localFilenameExtractsDir := filepath.Join(productExtractsDir, localFilename)
 	return filepath.Join(localFilenameExtractsDir, relPostInstallScriptPath)
 }

@@ -1,12 +1,10 @@
 package cli
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"net/http"
 	"net/url"
@@ -26,172 +24,6 @@ import (
 	"github.com/boggydigital/nod"
 	"github.com/boggydigital/redux"
 )
-
-func vangoghGetProductDetails(id string, rdx redux.Writeable, force bool) (*vangogh_integration.ProductDetails, error) {
-
-	productDetailsDir := camino.GetRel(data.ProductDetails, data.Metadata)
-	kvProductDetails, err := kevlar.New(productDetailsDir, kevlar.JsonExt)
-	if err != nil {
-		return nil, err
-	}
-
-	if !kvProductDetails.Has(id) || force {
-
-		if err = vangoghFetchRemoteProductDetails(id, kvProductDetails, rdx); err != nil {
-			return nil, err
-		}
-	}
-
-	return vangoghReadLocalProductDetails(id, kvProductDetails)
-}
-
-func vangoghReadLocalProductDetails(id string, kvProductDetails kevlar.KeyValues) (*vangogh_integration.ProductDetails, error) {
-
-	if has := kvProductDetails.Has(id); !has {
-		return nil, nil
-	}
-
-	tmReadCloser, err := kvProductDetails.Get(id)
-	if err != nil {
-		return nil, err
-	}
-	defer tmReadCloser.Close()
-
-	var productDetails vangogh_integration.ProductDetails
-	if err = json.UnmarshalRead(tmReadCloser, &productDetails); err != nil {
-		return nil, err
-	}
-
-	return &productDetails, nil
-}
-
-func vangoghFetchRemoteProductDetails(id string, kvProductDetails kevlar.KeyValues, rdx redux.Writeable) error {
-
-	fra := nod.Begin(" fetching vangogh product details %s...", id)
-	defer fra.Done()
-
-	if err := vangoghValidateSessionToken(rdx); err != nil {
-		return err
-	}
-
-	query := url.Values{
-		vangogh_integration.UrlIdParameter: {id},
-	}
-
-	req, err := data.VangoghApiRequest(http.MethodGet, data.ApiProductDetailsPath, query, rdx)
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return errors.New("error fetching product details: " + resp.Status)
-	}
-
-	var bts []byte
-	buf := bytes.NewBuffer(bts)
-	tr := io.TeeReader(resp.Body, buf)
-
-	if err = kvProductDetails.Set(id, tr); err != nil {
-		return err
-	}
-
-	return vangoghReduceProductDetails(id, kvProductDetails, rdx)
-
-}
-
-func vangoghReduceProductDetails(id string, kvProductDetails kevlar.KeyValues, rdx redux.Writeable) error {
-
-	rpda := nod.Begin(" reducing vangogh product details...")
-	defer rpda.Done()
-
-	rcProductDetails, err := kvProductDetails.Get(id)
-	if err != nil {
-		return err
-	}
-
-	defer rcProductDetails.Close()
-
-	var productDetails *vangogh_integration.ProductDetails
-	if err = json.UnmarshalRead(rcProductDetails, &productDetails); err != nil {
-		return err
-	}
-
-	propertyValues := make(map[string][]string)
-
-	oss := make([]string, 0, len(productDetails.OperatingSystems))
-	for _, os := range productDetails.OperatingSystems {
-		oss = append(oss, os.String())
-	}
-
-	reductionProperties := []string{
-		vangogh_integration.GogSteamAppIdProperty,
-		vangogh_integration.GogTitleProperty,
-		vangogh_integration.GogOperatingSystemsProperty,
-		vangogh_integration.GogDevelopersProperty,
-		vangogh_integration.GogPublishersProperty,
-		vangogh_integration.GogVerticalImageProperty,
-		vangogh_integration.GogImageProperty,
-		vangogh_integration.GogHeroProperty,
-		vangogh_integration.GogLogoProperty,
-		vangogh_integration.GogIconProperty,
-		vangogh_integration.GogIconSquareProperty,
-		vangogh_integration.GogBackgroundProperty,
-	}
-
-	for _, property := range reductionProperties {
-
-		var values []string
-
-		switch property {
-		case vangogh_integration.GogSteamAppIdProperty:
-			values = []string{productDetails.SteamAppId}
-		case vangogh_integration.GogTitleProperty:
-			values = []string{productDetails.Title}
-		case vangogh_integration.GogOperatingSystemsProperty:
-			values = oss
-		case vangogh_integration.GogDevelopersProperty:
-			values = productDetails.Developers
-		case vangogh_integration.GogPublishersProperty:
-			values = productDetails.Publishers
-		case vangogh_integration.GogVerticalImageProperty:
-			values = []string{productDetails.Images.VerticalImage}
-		case vangogh_integration.GogImageProperty:
-			values = []string{productDetails.Images.Image}
-		case vangogh_integration.GogHeroProperty:
-			values = []string{productDetails.Images.Hero}
-		case vangogh_integration.GogLogoProperty:
-			values = []string{productDetails.Images.Logo}
-		case vangogh_integration.GogIconProperty:
-			values = []string{productDetails.Images.Icon}
-		case vangogh_integration.GogIconSquareProperty:
-			values = []string{productDetails.Images.IconSquare}
-		case vangogh_integration.GogBackgroundProperty:
-			values = []string{productDetails.Images.Background}
-		}
-
-		if len(values) == 1 && values[0] == "" {
-			values = nil
-		}
-
-		if len(values) > 0 {
-			propertyValues[property] = values
-		}
-	}
-
-	for property, values := range propertyValues {
-		if err = rdx.ReplaceValues(property, id, values...); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
 
 func vangoghGetAvailableProducts(force bool) ([]vangogh_integration.AvailableProduct, error) {
 
@@ -260,7 +92,7 @@ func vangoghFetchAvailableProducts(kvAvailableProducts kevlar.KeyValues) error {
 	return kvAvailableProducts.Set(vangoghApKey, resp.Body)
 }
 
-func vangoghProductDetailsSize(productDetails *vangogh_integration.ProductDetails, ii *InstallInfo, manualUrlFilter ...string) int64 {
+func vangoghDownloadsListSize(downloadsList vangogh_integration.DownloadsList, ii *InstallInfo, manualUrlFilter ...string) int64 {
 	var totalEstimatedBytes int64
 
 	downloadTypes := []vangogh_integration.DownloadType{vangogh_integration.Installer}
@@ -268,10 +100,11 @@ func vangoghProductDetailsSize(productDetails *vangogh_integration.ProductDetail
 		downloadTypes = append(downloadTypes, vangogh_integration.DLC)
 	}
 
-	dls := productDetails.DownloadLinks.
+	dls := downloadsList.
 		FilterOperatingSystems(ii.OperatingSystem).
-		FilterLanguageCodes(ii.LangCode).
-		FilterDownloadTypes(downloadTypes...)
+		FilterLangCodes(ii.LangCode).
+		FilterDownloadTypes(downloadTypes...).
+		FilterPatches(true)
 
 	for _, dl := range dls {
 		if len(manualUrlFilter) > 0 && !slices.Contains(manualUrlFilter, dl.ManualUrl) {
@@ -295,39 +128,39 @@ func vangoghUninstallProduct(id string, ii *InstallInfo, rdx redux.Writeable) er
 	return removeInventoryFile(id, ii, rdx)
 }
 
-func vangoghShortcutAssets(productDetails *vangogh_integration.ProductDetails, rdx redux.Readable) (map[steam_grid.Asset]*url.URL, error) {
+func vangoghShortcutAssets(gogImages map[string][]string, rdx redux.Readable) (map[steam_grid.Asset]*url.URL, error) {
 
 	shortcutAssets := make(map[steam_grid.Asset]*url.URL)
 
 	for _, asset := range steam_grid.ShortcutAssets {
 
-		var imageId string
+		var imageIds []string
 		switch asset {
 		case steam_grid.Header:
-			imageId = productDetails.Images.Image
+			imageIds = gogImages[vangogh_integration.GogImageProperty]
 		case steam_grid.LibraryCapsule:
-			imageId = productDetails.Images.VerticalImage
+			imageIds = gogImages[vangogh_integration.GogVerticalImageProperty]
 		case steam_grid.LibraryHero:
-			if productDetails.Images.Hero != "" {
-				imageId = productDetails.Images.Hero
+			if heroImages := gogImages[vangogh_integration.GogHeroProperty]; len(heroImages) > 0 {
+				imageIds = heroImages
 			} else {
-				imageId = productDetails.Images.Background
+				imageIds = gogImages[vangogh_integration.GogBackgroundProperty]
 			}
 		case steam_grid.LibraryLogo:
-			imageId = productDetails.Images.Logo
+			imageIds = gogImages[vangogh_integration.GogLogoProperty]
 		case steam_grid.ClientIcon:
-			if productDetails.Images.IconSquare != "" {
-				imageId = productDetails.Images.IconSquare
+			if iconSquareImages := gogImages[vangogh_integration.GogIconSquareProperty]; len(iconSquareImages) > 0 {
+				imageIds = iconSquareImages
 			} else {
-				imageId = productDetails.Images.Icon
+				imageIds = gogImages[vangogh_integration.GogIconProperty]
 			}
 		default:
 			return nil, errors.New("unexpected shortcut asset " + asset.String())
 		}
 
-		if imageId != "" {
+		if len(imageIds) > 0 {
 
-			apiImagePath := path.Join(data.ApiImagePath, imageId)
+			apiImagePath := path.Join(data.ApiGogImagePath, imageIds[0])
 			vangoghImageUrl, err := data.VangoghUrl(apiImagePath, nil, rdx)
 			if err != nil {
 				return nil, err
@@ -486,30 +319,36 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 	ipa := nod.Begin("unpacking and placing %s %s-%s...", id, ii.OperatingSystem, ii.LangCode)
 	defer ipa.Done()
 
-	dls := originData.ProductDetails.DownloadLinks.
-		FilterOperatingSystems(ii.OperatingSystem).
-		FilterLanguageCodes(ii.LangCode).
-		FilterDownloadTypes(dt)
+	downloadsList, err := vangogh_integration.FromDetails(originData.GogDetails)
+	if err != nil {
+		return err
+	}
 
-	if len(dls) == 0 {
+	downloadsList = downloadsList.
+		FilterOperatingSystems(ii.OperatingSystem).
+		FilterLangCodes(ii.LangCode).
+		FilterDownloadTypes(dt).
+		FilterPatches(true)
+
+	if dt == vangogh_integration.DLC {
+		dlcNames := make(map[string]any)
+
+		for _, dl := range downloadsList {
+			if dl.DownloadType == vangogh_integration.DLC {
+				dlcNames[dl.Name] = nil
+			}
+		}
+
+		if len(dlcNames) > 0 {
+			ii.DownloadableContent = slices.Collect(maps.Keys(dlcNames))
+		}
+	}
+
+	localFilenames := gogDownloadslocalFilenames(downloadsList, originData.GogFilenames)
+
+	if len(downloadsList) == 0 {
 		ipa.EndWithResult("no links are matching install params")
 		return nil
-	}
-
-	dlcNames := make(map[string]any)
-
-	for _, dl := range dls {
-		if ii.OperatingSystem != dl.OperatingSystem ||
-			ii.LangCode != dl.LanguageCode {
-			continue
-		}
-		if dl.DownloadType == vangogh_integration.DLC {
-			dlcNames[dl.Name] = nil
-		}
-	}
-
-	if len(dlcNames) > 0 {
-		ii.DownloadableContent = slices.Collect(maps.Keys(dlcNames))
 	}
 
 	// vangogh installation:
@@ -525,7 +364,7 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 	// 1
 	installedAppsDir := camino.GetRel(data.GogApps, data.InstalledApps)
 
-	if err := originHasFreeSpace(id, installedAppsDir, ii, originData); err != nil {
+	if err = originHasFreeSpace(id, installedAppsDir, ii, originData); err != nil {
 		return err
 	}
 
@@ -535,12 +374,12 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 		return err
 	}
 
-	if err = vangoghUnpackInstallers(id, ii, dls, rdx, unpackDir); err != nil {
+	if err = vangoghUnpackInstallers(id, ii, downloadsList, originData.GogFilenames, rdx, unpackDir); err != nil {
 		return err
 	}
 
 	// 3
-	if err = vangoghPostUnpackActions(id, ii, dls, unpackDir, rdx); err != nil {
+	if err = vangoghPostUnpackActions(id, ii, localFilenames, unpackDir, rdx); err != nil {
 		return err
 	}
 
@@ -557,7 +396,7 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 	}
 
 	// 5
-	unpackedInventory, err := vangoghGetInventory(ii, dls, unpackDir)
+	unpackedInventory, err := vangoghGetInventory(ii, downloadsList, originData.GogFilenames, unpackDir)
 	if err != nil {
 		return err
 	}
@@ -567,12 +406,12 @@ func vangoghUnpackPlace(id string, ii *InstallInfo, dt vangogh_integration.Downl
 	}
 
 	// 6
-	if err = vangoghPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir); err != nil {
+	if err = vangoghPlaceUnpackedFiles(id, ii, downloadsList, originData.GogFilenames, rdx, unpackDir); err != nil {
 		return err
 	}
 
 	// 7
-	if err = vangoghPostInstallActions(id, ii, dls, rdx, unpackDir); err != nil {
+	if err = vangoghPostInstallActions(id, ii, downloadsList, originData.GogFilenames, rdx, unpackDir); err != nil {
 		return err
 	}
 
@@ -612,7 +451,7 @@ func vangoghGetUnpackDir(id string, ii *InstallInfo, rdx redux.Readable) (string
 	return unpackDir, nil
 }
 
-func vangoghUnpackInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Writeable, unpackDir string) error {
+func vangoghUnpackInstallers(id string, ii *InstallInfo, downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string, rdx redux.Writeable, unpackDir string) error {
 
 	if _, err := os.Stat(unpackDir); err == nil {
 		if ii.force {
@@ -630,17 +469,19 @@ func vangoghUnpackInstallers(id string, ii *InstallInfo, dls vangogh_integration
 		}
 	}
 
+	localFilenames := gogDownloadslocalFilenames(downloadsList, gogFilenames)
+
 	switch ii.OperatingSystem {
 	case vangogh_integration.MacOS:
-		return macOsUnpackInstallers(id, dls, unpackDir, ii.force)
+		return macOsUnpackInstallers(id, downloadsList, gogFilenames, unpackDir, ii.force)
 	case vangogh_integration.Linux:
-		return linuxUnpackInstallers(id, dls, unpackDir)
+		return linuxUnpackInstallers(id, localFilenames, unpackDir)
 	case vangogh_integration.Windows:
 		switch data.CurrentOs() {
 		case vangogh_integration.MacOS:
-			return macOsUnpackWindowsInstallers(id, ii, dls, rdx, unpackDir)
+			return macOsUnpackWindowsInstallers(id, ii, localFilenames, rdx, unpackDir)
 		case vangogh_integration.Linux:
-			return linuxUnpackWindowsInstallers(id, ii, dls, rdx, unpackDir)
+			return linuxUnpackWindowsInstallers(id, ii, localFilenames, rdx, unpackDir)
 		default:
 			return ii.OperatingSystem.ErrUnsupported()
 		}
@@ -649,37 +490,40 @@ func vangoghUnpackInstallers(id string, ii *InstallInfo, dls vangogh_integration
 	}
 }
 
-func vangoghPostUnpackActions(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, unpackDir string, rdx redux.Writeable) error {
+func vangoghPostUnpackActions(id string, ii *InstallInfo, localFilenames []string, unpackDir string, rdx redux.Writeable) error {
 	switch ii.OperatingSystem {
 	case vangogh_integration.MacOS:
-		return macOsReduceBundleNameProperty(id, dls, unpackDir, rdx)
+		return macOsReduceBundleNameProperty(id, localFilenames, unpackDir, rdx)
 	default:
 		return nil
 	}
 }
 
-func vangoghGetInventory(ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, unpackDir string) ([]string, error) {
+func vangoghGetInventory(ii *InstallInfo, downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string, unpackDir string) ([]string, error) {
 
 	switch ii.OperatingSystem {
 	case vangogh_integration.MacOS:
-		return macOsGetInventory(dls, unpackDir, ii.force)
+		return vangoghMacOsGetInventory(downloadsList, gogFilenames, unpackDir, ii.force)
 	default:
-		return getInventory(ii.OperatingSystem, dls, unpackDir)
+		return vangoghGetOsInventory(ii.OperatingSystem, downloadsList, gogFilenames, unpackDir)
 	}
 }
 
-func vangoghPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Writeable, unpackDir string) error {
+func vangoghPlaceUnpackedFiles(id string, ii *InstallInfo, downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string, rdx redux.Writeable, unpackDir string) error {
+
+	localFilenames := gogDownloadslocalFilenames(downloadsList, gogFilenames)
+
 	switch ii.OperatingSystem {
 	case vangogh_integration.MacOS:
-		return macOsPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir, ii.force)
+		return macOsPlaceUnpackedFiles(id, ii, downloadsList, gogFilenames, rdx, unpackDir, ii.force)
 	case vangogh_integration.Linux:
-		return linuxPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir)
+		return linuxPlaceUnpackedFiles(id, ii, localFilenames, rdx, unpackDir)
 	case vangogh_integration.Windows:
 		switch data.CurrentOs() {
 		case vangogh_integration.MacOS:
 			fallthrough
 		case vangogh_integration.Linux:
-			return prefixPlaceUnpackedFiles(id, ii, dls, rdx, unpackDir)
+			return prefixPlaceUnpackedFiles(id, ii, localFilenames, rdx, unpackDir)
 		default:
 			return ii.OperatingSystem.ErrUnsupported()
 		}
@@ -688,9 +532,9 @@ func vangoghPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integrati
 	}
 }
 
-func vangoghPlaceUnpackedLinkPayload(link *vangogh_integration.ProductDownloadLink, absUnpackedPath, absInstallationPath string) error {
+func vangoghPlaceUnpackedLinkPayload(localFilename string, absUnpackedPath, absInstallationPath string) error {
 
-	mpda := nod.Begin(" placing unpacked %s files...", link.LocalFilename)
+	mpda := nod.Begin(" placing unpacked %s files...", localFilename)
 	defer mpda.Done()
 
 	if _, err := os.Stat(absInstallationPath); os.IsNotExist(err) {
@@ -726,10 +570,10 @@ func vangoghPlaceUnpackedLinkPayload(link *vangogh_integration.ProductDownloadLi
 	return nil
 }
 
-func vangoghPostInstallActions(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
+func vangoghPostInstallActions(id string, ii *InstallInfo, downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string, rdx redux.Readable, unpackDir string) error {
 	switch ii.OperatingSystem {
 	case vangogh_integration.MacOS:
-		return macOsPostInstallActions(id, ii, dls, rdx, unpackDir, ii.force)
+		return macOsPostInstallActions(id, ii, downloadsList, gogFilenames, rdx, unpackDir, ii.force)
 	default:
 		return nil
 	}
@@ -754,22 +598,31 @@ func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData
 	}
 
 	downloadTypes := []vangogh_integration.DownloadType{vangogh_integration.Installer}
-	if !ii.NoDlcs {
+	switch ii.NoDlcs {
+	case false:
 		downloadTypes = append(downloadTypes, vangogh_integration.DLC)
+	default: // no nothing
 	}
 
-	dls := originData.ProductDetails.DownloadLinks.
-		FilterOperatingSystems(ii.OperatingSystem).
-		FilterLanguageCodes(ii.LangCode).
-		FilterDownloadTypes(downloadTypes...)
+	downloadsList, err := vangogh_integration.FromDetails(originData.GogDetails)
+	if err != nil {
+		return err
+	}
 
-	if len(dls) == 0 {
+	downloadsList = downloadsList.
+		FilterOperatingSystems(ii.OperatingSystem).
+		FilterLangCodes(ii.LangCode).
+		FilterDownloadTypes(downloadTypes...).
+		FilterPatches(true)
+
+	if len(downloadsList) == 0 {
 		return errors.New("no links are matching operating params")
 	}
 
-	for _, dl := range dls {
+	for _, dl := range downloadsList {
 
-		if dl.LocalFilename == "" {
+		var localFilename string
+		if localFilename = originData.GogFilenames[dl.ManualUrl]; localFilename == "" {
 			return errors.New("unresolved local filename for manual-url " + dl.ManualUrl)
 		}
 
@@ -777,14 +630,7 @@ func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData
 			continue
 		}
 
-		if dl.ValidationStatus != vangogh_integration.ValidationStatusSuccess &&
-			dl.ValidationStatus != vangogh_integration.ValidationStatusSelfValidated &&
-			dl.ValidationStatus != vangogh_integration.ValidationStatusMissingChecksum {
-			errMsg := fmt.Sprintf("%s validation status %s prevented download", dl.Name, dl.ValidationStatus)
-			return errors.New(errMsg)
-		}
-
-		fa := nod.NewProgress(" - %s...", dl.LocalFilename)
+		fa := nod.NewProgress(" - %s...", localFilename)
 
 		manualUrlPath := path.Join(data.ApiGogManualUrlPath, id, dl.DownloadType.String(), dl.ManualUrl)
 
@@ -794,7 +640,7 @@ func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData
 			continue
 		}
 
-		if err = dc.Download(fileUrl, ii.force, fa, downloadsDir, id, dl.LocalFilename); err != nil {
+		if err = dc.Download(fileUrl, ii.force, fa, downloadsDir, id, localFilename); err != nil {
 			fa.EndWithResult(err.Error())
 			continue
 		}
@@ -806,11 +652,11 @@ func vangoghDownloadData(id string, ii *InstallInfo, originData *data.OriginData
 }
 
 func vangoghRemoveProductDownloadLinks(id string,
-	productDetails *vangogh_integration.ProductDetails,
+	originData *data.OriginData,
 	ii *InstallInfo,
 	downloadsDir string) error {
 
-	rdla := nod.Begin(" removing downloads for %s...", productDetails.Title)
+	rdla := nod.Begin(" removing downloads for %s...", id)
 	defer rdla.Done()
 
 	idPath := filepath.Join(downloadsDir, id)
@@ -824,33 +670,39 @@ func vangoghRemoveProductDownloadLinks(id string,
 		downloadTypes = append(downloadTypes, vangogh_integration.DLC)
 	}
 
-	dls := productDetails.DownloadLinks.
+	downloadsList, err := vangogh_integration.FromDetails(originData.GogDetails)
+	if err != nil {
+		return err
+	}
+
+	downloadsList = downloadsList.
 		FilterOperatingSystems(ii.OperatingSystem).
-		FilterLanguageCodes(ii.LangCode).
+		FilterLangCodes(ii.LangCode).
 		FilterDownloadTypes(downloadTypes...)
 
-	if len(dls) == 0 {
+	if len(downloadsList) == 0 {
 		rdla.EndWithResult("no links are matching operating params")
 		return nil
 	}
 
-	for _, dl := range dls {
+	for _, dl := range downloadsList {
 
+		var localFilename string
 		// if we don't do this - product downloads dir itself will be removed
-		if dl.LocalFilename == "" {
+		if localFilename = originData.GogFilenames[dl.ManualUrl]; localFilename == "" {
 			continue
 		}
 
-		path := filepath.Join(downloadsDir, id, dl.LocalFilename)
+		absPath := filepath.Join(downloadsDir, id, localFilename)
 
-		fa := nod.NewProgress(" - %s...", dl.LocalFilename)
+		fa := nod.NewProgress(" - %s...", localFilename)
 
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+		if _, err := os.Stat(absPath); os.IsNotExist(err) {
 			fa.EndWithResult("not present")
 			continue
 		}
 
-		if err := os.Remove(path); err != nil {
+		if err := os.Remove(absPath); err != nil {
 			return err
 		}
 
@@ -926,7 +778,7 @@ func vangoghValidateData(id string, ii *InstallInfo, originData *data.OriginData
 	defer va.Done()
 
 	// always request new manual-url-checksums to avoid potentially reusing existing stale data
-	manualUrlChecksums, err := getManualUrlChecksums(id, rdx, true)
+	manualUrlChecksums, err := getGogChecksums(id, rdx, true)
 	if err != nil {
 		return err
 	}
@@ -935,7 +787,7 @@ func vangoghValidateData(id string, ii *InstallInfo, originData *data.OriginData
 	// and a parameter `no-validation`
 
 	var mismatchedManualUrls []string
-	if mismatchedManualUrls, err = vangoghValidateLinks(id, ii, manualUrlFilter, originData.ProductDetails, manualUrlChecksums); err != nil {
+	if mismatchedManualUrls, err = vangoghValidateLinks(id, ii, manualUrlFilter, originData, manualUrlChecksums); err != nil {
 		return err
 	} else if len(mismatchedManualUrls) > 0 {
 
@@ -947,7 +799,7 @@ func vangoghValidateData(id string, ii *InstallInfo, originData *data.OriginData
 			return err
 		}
 
-		if _, err = vangoghValidateLinks(id, ii, manualUrlFilter, originData.ProductDetails, manualUrlChecksums); err != nil {
+		if _, err = vangoghValidateLinks(id, ii, manualUrlFilter, originData, manualUrlChecksums); err != nil {
 			return err
 		}
 	}
@@ -958,10 +810,10 @@ func vangoghValidateData(id string, ii *InstallInfo, originData *data.OriginData
 func vangoghValidateLinks(id string,
 	ii *InstallInfo,
 	manualUrlFilter []string,
-	productDetails *vangogh_integration.ProductDetails,
+	originData *data.OriginData,
 	manualUrlChecksums map[string]string) ([]string, error) {
 
-	vla := nod.NewProgress("validating %s...", productDetails.Title)
+	vla := nod.NewProgress("validating %s...", id)
 	defer vla.Done()
 
 	downloadsDir := camino.GetAbs(data.Downloads)
@@ -971,27 +823,39 @@ func vangoghValidateLinks(id string,
 		downloadTypes = append(downloadTypes, vangogh_integration.DLC)
 	}
 
-	dls := productDetails.DownloadLinks.
-		FilterOperatingSystems(ii.OperatingSystem).
-		FilterLanguageCodes(ii.LangCode).
-		FilterDownloadTypes(downloadTypes...)
+	downloadsList, err := vangogh_integration.FromDetails(originData.GogDetails)
+	if err != nil {
+		return nil, err
+	}
 
-	if len(dls) == 0 {
+	downloadsList = downloadsList.
+		FilterOperatingSystems(ii.OperatingSystem).
+		FilterLangCodes(ii.LangCode).
+		FilterDownloadTypes(downloadTypes...).
+		FilterPatches(true)
+
+	if len(downloadsList) == 0 {
 		return nil, errors.New("no links are matching operating params")
 	}
 
-	vla.TotalInt(len(dls))
+	vla.TotalInt(len(downloadsList))
 
-	results := make([]ValidationResult, 0, len(dls))
+	results := make([]ValidationResult, 0, len(downloadsList))
 
 	var mismatchedManualUrls []string
 
-	for _, dl := range dls {
+	for _, dl := range downloadsList {
 		if len(manualUrlFilter) > 0 && !slices.Contains(manualUrlFilter, dl.ManualUrl) {
 			continue
 		}
 
-		vr, err := vangoghValidateLink(id, &dl, manualUrlChecksums[dl.ManualUrl], downloadsDir)
+		var localFilename string
+		if localFilename = originData.GogFilenames[dl.ManualUrl]; localFilename == "" {
+			continue
+		}
+
+		var vr ValidationResult
+		vr, err = vangoghValidateLink(id, localFilename, manualUrlChecksums[dl.ManualUrl], downloadsDir)
 		if err != nil {
 			vla.Error(err)
 		}
@@ -1008,12 +872,12 @@ func vangoghValidateLinks(id string,
 	return mismatchedManualUrls, nil
 }
 
-func vangoghValidateLink(id string, link *vangogh_integration.ProductDownloadLink, manualUrlMd5 string, downloadsDir string) (ValidationResult, error) {
+func vangoghValidateLink(id string, localFilename string, manualUrlMd5 string, downloadsDir string) (ValidationResult, error) {
 
-	dla := nod.NewProgress(" - %s...", link.LocalFilename)
+	dla := nod.NewProgress(" - %s...", localFilename)
 	defer dla.Done()
 
-	absDownloadPath := filepath.Join(downloadsDir, id, link.LocalFilename)
+	absDownloadPath := filepath.Join(downloadsDir, id, localFilename)
 
 	var stat os.FileInfo
 	var err error

@@ -70,7 +70,7 @@ func originRemoveDownloads(id string, ii *InstallInfo, originData *data.OriginDa
 
 	switch ii.Origin {
 	case data.VangoghOrigin:
-		if err := vangoghRemoveProductDownloadLinks(id, originData.ProductDetails, ii, downloadsDir); err != nil {
+		if err := vangoghRemoveProductDownloadLinks(id, originData, ii, downloadsDir); err != nil {
 			return err
 		}
 	case data.SteamOrigin:

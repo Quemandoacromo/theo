@@ -1,13 +1,16 @@
 package data
 
 const (
-	ApiAuthUserPath           = "/api/auth-user"
-	ApiAuthSessionPath        = "/api/auth-session"
-	ApiAvailableProductsPath  = "/api/available-products"
-	ApiProductDetailsPath     = "/api/product-details"
-	ApiManualUrlChecksumsPath = "/api/manual-url-checksums"
-	ApiBinariesVersionsPath   = "/api/binaries/versions"
-	ApiGogManualUrlPath       = "/api/gog-manual-url"
-	ApiBinaryPath             = "/api/binary"
-	ApiImagePath              = "/api/image"
+	ApiAuthUserPath         = "/api/auth-user"
+	ApiAuthSessionPath      = "/api/auth-session"
+	ApiGogChecksumsPath     = "/api/gog-checksums"
+	ApiGogFilenamesPath     = "/api/gog-filenames"
+	ApiGogImagesPath        = "/api/gog-images"
+	ApiBinariesVersionsPath = "/api/binaries/versions"
+	ApiGogManualUrlPath     = "/api/gog-manual-url"
+	ApiBinaryPath           = "/api/binary"
+	ApiGogImagePath         = "/api/gog-image"
+	ApiMetadataPath         = "/api/metadata"
+
+	ApiAvailableProductsPath = "/api/available-products"
 )

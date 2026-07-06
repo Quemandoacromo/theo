@@ -27,8 +27,6 @@ const (
 	Metadata
 	InstalledApps
 	Prefixes
-	//Wine
-	//SteamCmd
 )
 
 var absDirNames = map[camino.AbsDir]string{
@@ -39,22 +37,22 @@ var absDirNames = map[camino.AbsDir]string{
 	Metadata:      "metadata",
 	InstalledApps: "installed-apps",
 	Prefixes:      "prefixes",
-	//Wine:          "wine",
-	//SteamCmd:      "steamcmd",
 }
 
 const (
 	Redux camino.RelDir = iota
-	ProductDetails
-	ManualUrlChecksums
+	GogDetails
+	GogChecksums
+	GogFilenames
+	GogImages
 	SteamAppInfo
 	Cookies
 	Tokens
 	AvailableProducts
-	GameAssets
-	CatalogItems
-	GameManifests
-	Manifests
+	EgsGameAssets
+	EgsCatalogItems
+	EgsGameManifests
+	EgsManifests
 	Temp
 	Inventory
 	GogApps
@@ -69,53 +67,57 @@ const (
 )
 
 var relDirNames = map[camino.RelDir]string{
-	Redux:              "_redux",
-	ProductDetails:     "product-details",
-	ManualUrlChecksums: "manual-url-checksums",
-	SteamAppInfo:       "steam-appinfo",
-	Cookies:            "_cookies",
-	Tokens:             "_tokens",
-	AvailableProducts:  "available-products",
-	GameAssets:         "game-assets",
-	CatalogItems:       "catalog-items",
-	GameManifests:      "game-manifests",
-	Manifests:          "manifests",
-	Inventory:          "_inventory",
-	GogApps:            "gog-apps",
-	SteamApps:          "steam-apps",
-	EgsApps:            "egs-apps",
-	Temp:               "_temp",
-	Releases:           "releases",
-	Runtimes:           "runtimes",
-	GogPrefixes:        "gog-prefixes",
-	SteamPrefixes:      "steam-prefixes",
-	EgsPrefixes:        "egs-prefixes",
-	UmuConfigs:         "_umu-configs",
+	Redux:             "_redux",
+	GogDetails:        "gog-details",
+	GogChecksums:      "gog-checksums",
+	GogFilenames:      "gog-filenames",
+	GogImages:         "gog-images",
+	SteamAppInfo:      "steam-appinfo",
+	Cookies:           "_cookies",
+	Tokens:            "_tokens",
+	AvailableProducts: "available-products",
+	EgsGameAssets:     "egs-game-assets",
+	EgsCatalogItems:   "egs-catalog-items",
+	EgsGameManifests:  "egs-game-manifests",
+	EgsManifests:      "egs-manifests",
+	Inventory:         "_inventory",
+	GogApps:           "gog-apps",
+	SteamApps:         "steam-apps",
+	EgsApps:           "egs-apps",
+	Temp:              "_temp",
+	Releases:          "releases",
+	Runtimes:          "runtimes",
+	GogPrefixes:       "gog-prefixes",
+	SteamPrefixes:     "steam-prefixes",
+	EgsPrefixes:       "egs-prefixes",
+	UmuConfigs:        "_umu-configs",
 }
 
 var relAbsParents = map[camino.RelDir][]camino.AbsDir{
-	Redux:              {Metadata},
-	ProductDetails:     {Metadata},
-	ManualUrlChecksums: {Metadata},
-	SteamAppInfo:       {Metadata},
-	Cookies:            {Metadata},
-	Tokens:             {Metadata},
-	AvailableProducts:  {Metadata},
-	GameAssets:         {Metadata},
-	CatalogItems:       {Metadata},
-	GameManifests:      {Metadata},
-	Manifests:          {Metadata},
-	Temp:               {Downloads},
-	Inventory:          {InstalledApps},
-	GogApps:            {InstalledApps},
-	SteamApps:          {InstalledApps},
-	EgsApps:            {InstalledApps},
-	UmuConfigs:         {InstalledApps},
-	Releases:           {Binaries},
-	Runtimes:           {Binaries},
-	GogPrefixes:        {Prefixes},
-	SteamPrefixes:      {Prefixes},
-	EgsPrefixes:        {Prefixes},
+	Redux:             {Metadata},
+	Cookies:           {Metadata},
+	Tokens:            {Metadata},
+	AvailableProducts: {Metadata},
+	GogDetails:        {Metadata},
+	GogChecksums:      {Metadata},
+	GogFilenames:      {Metadata},
+	GogImages:         {Metadata},
+	SteamAppInfo:      {Metadata},
+	EgsGameAssets:     {Metadata},
+	EgsCatalogItems:   {Metadata},
+	EgsGameManifests:  {Metadata},
+	EgsManifests:      {Metadata},
+	Temp:              {Downloads},
+	Inventory:         {InstalledApps},
+	GogApps:           {InstalledApps},
+	SteamApps:         {InstalledApps},
+	EgsApps:           {InstalledApps},
+	UmuConfigs:        {InstalledApps},
+	Releases:          {Binaries},
+	Runtimes:          {Binaries},
+	GogPrefixes:       {Prefixes},
+	SteamPrefixes:     {Prefixes},
+	EgsPrefixes:       {Prefixes},
 }
 
 var steamCmdBinary = map[vangogh_integration.OperatingSystem]string{

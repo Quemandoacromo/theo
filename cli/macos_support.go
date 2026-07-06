@@ -43,7 +43,7 @@ var (
 	ErrNoMacOsAppBundle              = errors.New("cannot locate macOS app bundle")
 )
 
-func macOsUnpackInstallers(id string, dls vangogh_integration.ProductDownloadLinks, unpackDir string, force bool) error {
+func macOsUnpackInstallers(id string, downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string, unpackDir string, force bool) error {
 
 	mui := nod.Begin(" unpacking %s installers with pkgutil, please wait...", id)
 	defer mui.Done()
@@ -53,26 +53,31 @@ func macOsUnpackInstallers(id string, dls vangogh_integration.ProductDownloadLin
 
 	installerUnpacked := false
 
-	for _, link := range dls {
+	for _, dl := range downloadsList {
 
-		if !isLinkExecutable(&link, vangogh_integration.MacOS) {
+		var localFilename string
+		if localFilename = gogFilenames[dl.ManualUrl]; localFilename == "" {
+			continue
+		}
+
+		if !isExecutable(localFilename, vangogh_integration.MacOS) {
 			continue
 		}
 
 		// only unpack first Installer pkg, as that should achieve intended outcome
 		// certain games (e.g. Baldur's Gate 3) ship additional language patches
 		// that are likely not desired for default unpacking
-		if link.DownloadType == vangogh_integration.Installer && installerUnpacked && !force {
+		if dl.DownloadType == vangogh_integration.Installer && installerUnpacked && !force {
 			continue
 		}
 
-		absInstallerPath := filepath.Join(productDownloadsDir, link.LocalFilename)
+		absInstallerPath := filepath.Join(productDownloadsDir, localFilename)
 
-		if err := macOsUnpackLink(&link, absInstallerPath, unpackDir); err != nil {
+		if err := macOsUnpackLink(localFilename, absInstallerPath, unpackDir); err != nil {
 			return err
 		}
 
-		if link.DownloadType == vangogh_integration.Installer {
+		if dl.DownloadType == vangogh_integration.Installer {
 			installerUnpacked = true
 		}
 	}
@@ -80,15 +85,15 @@ func macOsUnpackInstallers(id string, dls vangogh_integration.ProductDownloadLin
 	return nil
 }
 
-func macOsUnpackWindowsInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string) error {
+func macOsUnpackWindowsInstallers(id string, ii *InstallInfo, localFilenames []string, rdx redux.Readable, unpackDir string) error {
 
 	innoextractInstalled := macOsIsInnoextractInstalled()
 
 	switch innoextractInstalled {
 	case true:
-		return macOsInnoextractInstallers(id, ii, dls, unpackDir)
+		return macOsInnoextractInstallers(id, ii, localFilenames, unpackDir)
 	default:
-		return prefixRunInstallers(id, ii, dls, rdx, unpackDir)
+		return prefixRunInstallers(id, ii, localFilenames, rdx, unpackDir)
 	}
 }
 
@@ -103,7 +108,7 @@ func macOsIsInnoextractInstalled() bool {
 	}
 }
 
-func macOsInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, unpackDir string) error {
+func macOsInnoextractInstallers(id string, ii *InstallInfo, localFilenames []string, unpackDir string) error {
 
 	miia := nod.Begin(" innoextract %s installers for %s-%s...", id, vangogh_integration.Windows, ii.LangCode)
 	defer miia.Done()
@@ -115,21 +120,21 @@ func macOsInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integrat
 		return err
 	}
 
-	for _, link := range dls {
+	for _, localFilename := range localFilenames {
 
-		if !isLinkExecutable(&link, vangogh_integration.Windows) {
+		if !isExecutable(localFilename, vangogh_integration.Windows) {
 			continue
 		}
 
-		absDstDir := filepath.Join(unpackDir, link.LocalFilename)
+		absDstDir := filepath.Join(unpackDir, localFilename)
 		if _, err = os.Stat(absDstDir); os.IsNotExist(err) {
 			if err = os.MkdirAll(absDstDir, camino.DefaultFileMode); err != nil {
 				return err
 			}
 		}
 
-		absInstallerPath := filepath.Join(downloadsDir, id, link.LocalFilename)
-		absUnpackDir := filepath.Join(unpackDir, link.LocalFilename)
+		absInstallerPath := filepath.Join(downloadsDir, id, localFilename)
+		absUnpackDir := filepath.Join(unpackDir, localFilename)
 
 		if err = nixInnoextract(innoextractPath, absInstallerPath, absUnpackDir); err != nil {
 			return err
@@ -139,12 +144,12 @@ func macOsInnoextractInstallers(id string, ii *InstallInfo, dls vangogh_integrat
 	return nil
 }
 
-func macOsUnpackLink(link *vangogh_integration.ProductDownloadLink, linkPath, unpackDir string) error {
+func macOsUnpackLink(localFilename string, linkPath, unpackDir string) error {
 
-	mpuea := nod.Begin(" unpacking %s with pkgutil, please wait...", link.LocalFilename)
+	mpuea := nod.Begin(" unpacking %s with pkgutil, please wait...", localFilename)
 	defer mpuea.Done()
 
-	unpackLinkDir := filepath.Join(unpackDir, link.LocalFilename)
+	unpackLinkDir := filepath.Join(unpackDir, localFilename)
 
 	unpackLinkParentDir, _ := filepath.Split(unpackLinkDir)
 
@@ -161,7 +166,7 @@ func macOsUnpackLink(link *vangogh_integration.ProductDownloadLink, linkPath, un
 	return cmd.Run()
 }
 
-func macOsReduceBundleNameProperty(id string, dls vangogh_integration.ProductDownloadLinks, unpackDir string, rdx redux.Writeable) error {
+func macOsReduceBundleNameProperty(id string, localFilenames []string, unpackDir string, rdx redux.Writeable) error {
 
 	mrbna := nod.Begin(" reducing %s bundle names...", id)
 	defer mrbna.Done()
@@ -170,13 +175,13 @@ func macOsReduceBundleNameProperty(id string, dls vangogh_integration.ProductDow
 		return err
 	}
 
-	for _, link := range dls {
+	for _, localFilename := range localFilenames {
 
-		if !isLinkExecutable(&link, vangogh_integration.MacOS) {
+		if !isExecutable(localFilename, vangogh_integration.MacOS) {
 			continue
 		}
 
-		absPostInstallScriptPath := PostInstallScriptPath(unpackDir, &link)
+		absPostInstallScriptPath := PostInstallScriptPath(unpackDir, localFilename)
 		postInstallScript, err := ParsePostInstallScript(absPostInstallScriptPath)
 		if err != nil {
 			return err
@@ -192,16 +197,21 @@ func macOsReduceBundleNameProperty(id string, dls vangogh_integration.ProductDow
 	return nil
 }
 
-func macOsPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integration.ProductDownloadLinks, rdx redux.Readable, unpackDir string, force bool) error {
+func macOsPlaceUnpackedFiles(id string, ii *InstallInfo, downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string, rdx redux.Readable, unpackDir string, force bool) error {
 
 	mpufa := nod.Begin(" placing unpacked files for %s...", id)
 	defer mpufa.Done()
 
 	installerPlaced := false
 
-	for _, link := range dls {
+	for _, link := range downloadsList {
 
-		if !isLinkExecutable(&link, vangogh_integration.MacOS) {
+		var localFilename string
+		if localFilename = gogFilenames[link.ManualUrl]; localFilename == "" {
+			continue
+		}
+
+		if !isExecutable(localFilename, vangogh_integration.MacOS) {
 			continue
 		}
 
@@ -210,14 +220,14 @@ func macOsPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integration
 			continue
 		}
 
-		absUnpackedPayloadPath := filepath.Join(unpackDir, link.LocalFilename, relPayloadPath)
+		absUnpackedPayloadPath := filepath.Join(unpackDir, localFilename, relPayloadPath)
 		if _, err := os.Stat(absUnpackedPayloadPath); os.IsNotExist(err) {
 			return ErrMissingExtractedPayload
 		}
 
 		absBundlePath, err := originOsInstalledPath(id, ii, rdx)
 
-		if err = vangoghPlaceUnpackedLinkPayload(&link, absUnpackedPayloadPath, absBundlePath); err != nil {
+		if err = vangoghPlaceUnpackedLinkPayload(localFilename, absUnpackedPayloadPath, absBundlePath); err != nil {
 			return err
 		}
 
@@ -229,7 +239,7 @@ func macOsPlaceUnpackedFiles(id string, ii *InstallInfo, dls vangogh_integration
 	return nil
 }
 
-func macOsGetInventory(dls vangogh_integration.ProductDownloadLinks, unpackDir string, force bool) ([]string, error) {
+func vangoghMacOsGetInventory(downloadsList vangogh_integration.DownloadsList, gogFilenames map[string]string, unpackDir string, force bool) ([]string, error) {
 
 	mgia := nod.Begin(" creating inventory of unpacked files...")
 	defer mgia.Done()
@@ -238,9 +248,14 @@ func macOsGetInventory(dls vangogh_integration.ProductDownloadLinks, unpackDir s
 
 	installerInventoried := false
 
-	for _, link := range dls {
+	for _, link := range downloadsList {
 
-		if !isLinkExecutable(&link, vangogh_integration.MacOS) {
+		var localFilename string
+		if localFilename = gogFilenames[link.ManualUrl]; localFilename == "" {
+			continue
+		}
+
+		if !isExecutable(localFilename, vangogh_integration.MacOS) {
 			continue
 		}
 
@@ -249,7 +264,7 @@ func macOsGetInventory(dls vangogh_integration.ProductDownloadLinks, unpackDir s
 			continue
 		}
 
-		absUnpackedPayloadPath := filepath.Join(unpackDir, link.LocalFilename, relPayloadPath)
+		absUnpackedPayloadPath := filepath.Join(unpackDir, localFilename, relPayloadPath)
 		if _, err := os.Stat(absUnpackedPayloadPath); os.IsNotExist(err) {
 			return nil, ErrMissingExtractedPayload
 		}
@@ -274,7 +289,8 @@ func macOsGetInventory(dls vangogh_integration.ProductDownloadLinks, unpackDir s
 
 func macOsPostInstallActions(id string,
 	ii *InstallInfo,
-	dls vangogh_integration.ProductDownloadLinks,
+	downloadsList vangogh_integration.DownloadsList,
+	gogFilenames map[string]string,
 	rdx redux.Readable,
 	unpackDir string,
 	force bool) error {
@@ -286,9 +302,14 @@ func macOsPostInstallActions(id string,
 
 	installerPostInstallActed := false
 
-	for _, link := range dls {
+	for _, link := range downloadsList {
 
-		if !isLinkExecutable(&link, vangogh_integration.MacOS) {
+		var localFilename string
+		if localFilename = gogFilenames[link.ManualUrl]; localFilename == "" {
+			continue
+		}
+
+		if !isExecutable(localFilename, vangogh_integration.MacOS) {
 			continue
 		}
 
@@ -301,7 +322,7 @@ func macOsPostInstallActions(id string,
 
 		productDownloadsDir := filepath.Join(downloadsDir, id)
 
-		absPostInstallScriptPath := PostInstallScriptPath(unpackDir, &link)
+		absPostInstallScriptPath := PostInstallScriptPath(unpackDir, localFilename)
 
 		pis, err := ParsePostInstallScript(absPostInstallScriptPath)
 		if err != nil {

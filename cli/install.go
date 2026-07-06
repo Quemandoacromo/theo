@@ -111,10 +111,8 @@ func Install(id string, ii *InstallInfo) error {
 		return err
 	}
 
-	if !ii.NoDlcs {
-		if err = originInstallDlcs(id, ii, originData, rdx); err != nil {
-			return err
-		}
+	if err = originInstallDownloadableContent(id, ii, originData, rdx); err != nil {
+		return err
 	}
 
 	if err = originAddSteamShortcut(id, id, ii, originData, rdx); err != nil {
@@ -177,8 +175,11 @@ func originAddSteamShortcut(id, forId string, ii *InstallInfo, originData *data.
 
 	switch ii.Origin {
 	case data.VangoghOrigin:
-		if originData.ProductDetails != nil {
-			pda, err = vangoghShortcutAssets(originData.ProductDetails, rdx)
+		var gogImages map[string][]string
+		gogImages, err = getGogImages(id, rdx, false)
+
+		if len(gogImages) > 0 {
+			pda, err = vangoghShortcutAssets(gogImages, rdx)
 			if err != nil {
 				return err
 			}
@@ -264,7 +265,11 @@ func originPostInstall(id string, ii *InstallInfo, originData *data.OriginData, 
 	return nil
 }
 
-func originInstallDlcs(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
+func originInstallDownloadableContent(id string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
+
+	if ii.NoDlcs {
+		return nil
+	}
 
 	oidca := nod.Begin("installing DLCs for %s...", id)
 	defer oidca.Done()

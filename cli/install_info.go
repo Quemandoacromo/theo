@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"encoding/json/v2"
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/arelate/southern_light/gog_integration"
 	"github.com/arelate/southern_light/vangogh_integration"
 	"github.com/arelate/theo/data"
 	"github.com/boggydigital/nod"
@@ -48,11 +46,18 @@ func (ii *InstallInfo) reduceOriginData(id string, originData *data.OriginData) 
 	switch ii.Origin {
 	case data.VangoghOrigin:
 
-		if originData.ProductDetails == nil {
-			return errors.New("cannot sync nil product details for " + id)
+		if originData.GogDetails == nil {
+			return errors.New("cannot reduce nil details for " + id)
 		}
 
-		setInstallInfoDefaults(ii, originData.ProductDetails.OperatingSystems)
+		osStr, err := originData.GogDetails.GetOperatingSystems()
+		if err != nil {
+			return err
+		}
+
+		operataingSystems := vangogh_integration.ParseManyOperatingSystems(osStr)
+
+		setInstallInfoDefaults(ii, operataingSystems)
 
 		downloadTypes := []vangogh_integration.DownloadType{vangogh_integration.Installer}
 
@@ -63,10 +68,16 @@ func (ii *InstallInfo) reduceOriginData(id string, originData *data.OriginData) 
 			// do nothing
 		}
 
-		dls := originData.ProductDetails.DownloadLinks.
+		downloadsList, err := vangogh_integration.FromDetails(originData.GogDetails)
+		if err != nil {
+			return err
+		}
+
+		dls := downloadsList.
 			FilterOperatingSystems(ii.OperatingSystem).
-			FilterLanguageCodes(ii.LangCode).
-			FilterDownloadTypes(downloadTypes...)
+			FilterLangCodes(ii.LangCode).
+			FilterDownloadTypes(downloadTypes...).
+			FilterPatches(true)
 
 		ii.EstimatedBytes = 0
 		for _, dl := range dls {
@@ -74,17 +85,6 @@ func (ii *InstallInfo) reduceOriginData(id string, originData *data.OriginData) 
 				ii.Version = dl.Version
 			}
 			ii.EstimatedBytes += dl.EstimatedBytes
-		}
-
-		switch originData.ProductDetails.ProductType {
-		case gog_integration.ProductTypeDlc:
-			return fmt.Errorf("install %s required product(s) to get this downloadable content", strings.Join(originData.ProductDetails.RequiresGames, ","))
-		case gog_integration.ProductTypePack:
-			return fmt.Errorf("install %s included product(s) to get this edition", strings.Join(originData.ProductDetails.IncludesGames, ","))
-		case gog_integration.ProductTypeGame:
-			// do nothing
-		default:
-			return errors.New("unknown product type " + originData.ProductDetails.ProductType)
 		}
 
 	case data.SteamOrigin:

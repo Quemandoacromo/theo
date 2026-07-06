@@ -21,9 +21,14 @@ func originHasFreeSpace(
 	var totalEstimatedBytes int64
 	var err error
 
+	downloadsList, err := vangogh_integration.FromDetails(originData.GogDetails)
+	if err != nil {
+		return err
+	}
+
 	switch ii.Origin {
 	case data.VangoghOrigin:
-		totalEstimatedBytes = vangoghProductDetailsSize(originData.ProductDetails, ii, manualUrlFilter...)
+		totalEstimatedBytes = vangoghDownloadsListSize(downloadsList, ii, manualUrlFilter...)
 	case data.SteamOrigin:
 		if totalEstimatedBytes, err = steamAppInfoSize(id, ii.OperatingSystem, originData.AppInfoKv); err != nil {
 			return err
