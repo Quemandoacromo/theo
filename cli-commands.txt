@@ -44,12 +44,13 @@ install
     id^
     os={operating-systems^}
     lang-code={language-codes^}
-    no-dlcs
     keep-downloads
     steam
     epic-games
-    no-steam-shortcut
+    no-dlcs
     no-preset-launch-options
+    no-steam-shortcut
+    no-validation
     env&
     verbose
     force

@@ -34,8 +34,9 @@ type InstallInfo struct {
 	TimeUpdated            string                              `json:"time-updated,omitempty"`
 	EstimatedBytes         int64                               `json:"estimated-bytes"`
 	KeepDownloads          bool                                `json:"keep-downloads"`
-	NoSteamShortcut        bool                                `json:"no-steam-shortcut"`
 	NoPresentLaunchOptions bool                                `json:"no-preset-launch-options"`
+	NoSteamShortcut        bool                                `json:"no-steam-shortcut"`
+	NoValidation           bool                                `json:"no-validation"`
 	Env                    []string                            `json:"env"`
 	verbose                bool                                // won't be serialized
 	force                  bool                                // won't be serialized

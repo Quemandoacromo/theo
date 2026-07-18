@@ -40,6 +40,7 @@ func InstallHandler(u *url.URL) error {
 		KeepDownloads:          q.Has(vangogh_integration.UrlKeepDownloadsParameter),
 		NoSteamShortcut:        q.Has(vangogh_integration.UrlNoSteamShortcutParameter),
 		NoPresentLaunchOptions: q.Has(vangogh_integration.UrlNoPresetLaunchOptionsParameter),
+		NoValidation:           q.Has(vangogh_integration.UrlNoValidationParameter),
 		verbose:                q.Has(vangogh_integration.UrlVerboseParameter),
 		force:                  q.Has(vangogh_integration.UrlForceParameter),
 	}
@@ -100,8 +101,10 @@ func Install(id string, ii *InstallInfo) error {
 		return err
 	}
 
-	if err = Validate(id, ii); err != nil {
-		return err
+	if !ii.NoValidation {
+		if err = Validate(id, ii); err != nil {
+			return err
+		}
 	}
 
 	if err = osPreInstallActions(id, ii, rdx); err != nil {
@@ -116,8 +119,10 @@ func Install(id string, ii *InstallInfo) error {
 		return err
 	}
 
-	if err = originAddSteamShortcut(id, id, ii, originData, rdx); err != nil {
-		return err
+	if !ii.NoSteamShortcut {
+		if err = originAddSteamShortcut(id, id, ii, originData, rdx); err != nil {
+			return err
+		}
 	}
 
 	if err = originPostInstall(id, ii, originData, rdx); err != nil {
@@ -164,10 +169,6 @@ func originPinInstallInfo(id string, ii *InstallInfo, originData *data.OriginDat
 }
 
 func originAddSteamShortcut(id, forId string, ii *InstallInfo, originData *data.OriginData, rdx redux.Writeable) error {
-
-	if ii.NoSteamShortcut {
-		return nil
-	}
 
 	var pda map[steam_grid.Asset]*url.URL
 	var lp *logoPosition

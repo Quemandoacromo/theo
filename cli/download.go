@@ -105,7 +105,7 @@ func originGetData(id string, ii *InstallInfo, rdx redux.Writeable, force bool) 
 	case data.EpicGamesOrigin:
 
 		var gameAssetsOs []vangogh_integration.OperatingSystem
-		gameAssetsOs, err = egsGameAssetOperatingSystems(id, ii.force)
+		gameAssetsOs, err = egsGameAssetOperatingSystems(id, force)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +116,7 @@ func originGetData(id string, ii *InstallInfo, rdx redux.Writeable, force bool) 
 		if gameAsset, err = egsGetGameAsset(id, ii); err != nil {
 			return nil, err
 		}
-		if originData.CatalogItem, err = egsGetCatalogItem(gameAsset, ii, rdx); err != nil {
+		if originData.CatalogItem, err = egsGetCatalogItem(gameAsset, ii, rdx, force); err != nil {
 			return nil, err
 		}
 

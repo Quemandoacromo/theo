@@ -304,7 +304,7 @@ func egsGameAssetsAvailableProducts(
 
 		for _, gameAsset := range gameAssets {
 
-			catalogItem, err := egsGetCatalogItem(&gameAsset, ii, rdx)
+			catalogItem, err := egsGetCatalogItem(&gameAsset, ii, rdx, ii.force)
 			if err != nil {
 				return nil, err
 			}
@@ -415,7 +415,7 @@ func egsFetchGameAssets(operatingSystem vangogh_integration.OperatingSystem) err
 	return kvAvailableProducts.Set(egsOsApKey, rcGameAssets)
 }
 
-func egsGetCatalogItem(gameAsset *egs_integration.GameAsset, ii *InstallInfo, rdx redux.Writeable) (*egs_integration.CatalogItem, error) {
+func egsGetCatalogItem(gameAsset *egs_integration.GameAsset, ii *InstallInfo, rdx redux.Writeable, force bool) (*egs_integration.CatalogItem, error) {
 
 	catalogItemsDir := vangogh_integration.AbsProductTypeDir(vangogh_integration.EgsCatalogItems)
 
@@ -424,7 +424,7 @@ func egsGetCatalogItem(gameAsset *egs_integration.GameAsset, ii *InstallInfo, rd
 		return nil, err
 	}
 
-	if !kvCatalogItems.Has(gameAsset.CatalogItemId) || ii.force {
+	if !kvCatalogItems.Has(gameAsset.CatalogItemId) || force {
 
 		if err = egsFetchCatalogItem(gameAsset, kvCatalogItems, rdx); err != nil {
 			return nil, err
@@ -1078,7 +1078,7 @@ func egsUninstallDlcs(appName string, ii *InstallInfo, rdx redux.Writeable) erro
 		return err
 	}
 
-	catalogItem, err := egsGetCatalogItem(gameAsset, ii, rdx)
+	catalogItem, err := egsGetCatalogItem(gameAsset, ii, rdx, ii.force)
 	if err != nil {
 		return err
 	}
