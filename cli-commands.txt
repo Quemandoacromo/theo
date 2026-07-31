@@ -102,7 +102,7 @@ remove-downloads
     lang-code&={language-codes^}
 
 reveal
-    id^
+    id^*
     os={operating-systems^}
     lang-code={language-codes^}
     installed
