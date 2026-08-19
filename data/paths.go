@@ -91,13 +91,9 @@ func AbsSteamCmdBinPath(operatingSystem vangogh_integration.OperatingSystem) (st
 
 func AbsSteamAppInstallDir(steamAppId string, operatingSystem vangogh_integration.OperatingSystem, rdx redux.Readable) (string, error) {
 
-	if err := rdx.MustHave(vangogh_integration.SteamTitleProperty); err != nil {
+	steamAppName, err := GetTitleProperty(steamAppId, rdx)
+	if err != nil {
 		return "", err
-	}
-
-	var steamAppName string
-	if san, ok := rdx.GetLastVal(vangogh_integration.SteamTitleProperty, steamAppId); ok && san != "" {
-		steamAppName = san
 	}
 
 	if steamAppName == "" {
