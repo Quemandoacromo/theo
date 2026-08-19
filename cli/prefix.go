@@ -46,7 +46,7 @@ func PrefixHandler(u *url.URL) error {
 	}
 
 	if q.Has(vangogh_integration.UrlArgParameter) {
-		for _, arg := range strings.Split(q.Get(vangogh_integration.UrlArgParameter), ",") {
+		for arg := range strings.SplitSeq(q.Get(vangogh_integration.UrlArgParameter), ",") {
 			et.args = append(et.args, strings.TrimPrefix(arg, "\\"))
 		}
 	}

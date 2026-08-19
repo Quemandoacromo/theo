@@ -217,7 +217,7 @@ func nixFreeSpace(path string) (int64, error) {
 	}
 
 	values := make([]string, 0, 5)
-	for _, val := range strings.Split(lines[1], " ") {
+	for val := range strings.SplitSeq(lines[1], " ") {
 		if val == "" {
 			continue
 		}
